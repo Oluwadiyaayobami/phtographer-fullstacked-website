@@ -38,7 +38,7 @@ const AuthForm = ({ mode }) => {
         const { error } = await signUp(formData.email, formData.password, formData.name)
         if (error) throw error
         
-        toast.success('Account created successfully! Please check your email to verify your account.')
+        toast.success('Account created successfully!')
         navigate('/login')
       } else {
         const { error } = await signIn(formData.email, formData.password)
