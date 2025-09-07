@@ -21,7 +21,6 @@ export const AuthProvider = ({ children }) => {
   useEffect(() => {
     let channel
 
-    // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
       if (session?.user) {
@@ -29,24 +28,22 @@ export const AuthProvider = ({ children }) => {
         const adminStatus = await isAdmin(session.user.id)
         setUserIsAdmin(adminStatus)
 
-        // Start realtime subscription for this user
+        // 🔹 Realtime check: logout if user row is deleted
         channel = supabase
           .channel('user-realtime-check')
           .on(
             'postgres_changes',
             {
-              event: '*',
+              event: 'DELETE',
               schema: 'public',
               table: 'users',
               filter: `id=eq.${session.user.id}`,
             },
-            async (payload) => {
-              if (payload.eventType === 'DELETE') {
-                await supabase.auth.signOut()
-                setUser(null)
-                setUserIsAdmin(false)
-                navigate('/login')
-              }
+            async () => {
+              await supabase.auth.signOut()
+              setUser(null)
+              setUserIsAdmin(false)
+              navigate('/login')
             }
           )
           .subscribe()
@@ -56,40 +53,15 @@ export const AuthProvider = ({ children }) => {
 
     getInitialSession()
 
-    // Listen for auth changes
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
           setUser(session.user)
           const adminStatus = await isAdmin(session.user.id)
           setUserIsAdmin(adminStatus)
-
-          // Re-subscribe to realtime changes for the new user
-          if (channel) supabase.removeChannel(channel)
-          channel = supabase
-            .channel('user-realtime-check')
-            .on(
-              'postgres_changes',
-              {
-                event: '*',
-                schema: 'public',
-                table: 'users',
-                filter: `id=eq.${session.user.id}`,
-              },
-              async (payload) => {
-                if (payload.eventType === 'DELETE') {
-                  await supabase.auth.signOut()
-                  setUser(null)
-                  setUserIsAdmin(false)
-                  navigate('/login')
-                }
-              }
-            )
-            .subscribe()
         } else {
           setUser(null)
           setUserIsAdmin(false)
-          if (channel) supabase.removeChannel(channel)
         }
         setLoading(false)
       }
