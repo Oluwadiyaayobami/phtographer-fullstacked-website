@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, isAdmin } from '../utils/supabase'
+import { supabase, getCurrentUser, isAdmin } from '../utils/supabase'
 
 const AuthContext = createContext()
 
@@ -17,29 +17,14 @@ export const AuthProvider = ({ children }) => {
   const [userIsAdmin, setUserIsAdmin] = useState(false)
 
   useEffect(() => {
+    // Get initial session
     const getInitialSession = async () => {
       const { data: { session } } = await supabase.auth.getSession()
-
       if (session?.user) {
-        // ✅ Check if user exists in "users" table
-        const { data: profile, error } = await supabase
-          .from('users') // change to "profiles" if that's your table
-          .select('*')
-          .eq('id', session.user.id)
-          .single()
-
-        if (!profile || error) {
-          // user deleted → force logout
-          await supabase.auth.signOut()
-          setUser(null)
-          setUserIsAdmin(false)
-        } else {
-          setUser(session.user)
-          const adminStatus = await isAdmin(session.user.id)
-          setUserIsAdmin(adminStatus)
-        }
+        setUser(session.user)
+        const adminStatus = await isAdmin(session.user.id)
+        setUserIsAdmin(adminStatus)
       }
-
       setLoading(false)
     }
 
@@ -49,21 +34,9 @@ export const AuthProvider = ({ children }) => {
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, session) => {
         if (session?.user) {
-          const { data: profile, error } = await supabase
-            .from('users')
-            .select('*')
-            .eq('id', session.user.id)
-            .single()
-
-          if (!profile || error) {
-            await supabase.auth.signOut()
-            setUser(null)
-            setUserIsAdmin(false)
-          } else {
-            setUser(session.user)
-            const adminStatus = await isAdmin(session.user.id)
-            setUserIsAdmin(adminStatus)
-          }
+          setUser(session.user)
+          const adminStatus = await isAdmin(session.user.id)
+          setUserIsAdmin(adminStatus)
         } else {
           setUser(null)
           setUserIsAdmin(false)
