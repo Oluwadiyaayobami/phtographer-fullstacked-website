@@ -21,15 +21,15 @@ export const AuthProvider = ({ children }) => {
       const { data: { session } } = await supabase.auth.getSession()
 
       if (session?.user) {
-        // ✅ Check if user still exists in DB
+        // ✅ Check if user exists in "users" table
         const { data: profile, error } = await supabase
-          .from('users') // or "profiles"
+          .from('users') // change to "profiles" if that's your table
           .select('*')
           .eq('id', session.user.id)
           .single()
 
         if (!profile || error) {
-          // user was deleted → force logout
+          // user deleted → force logout
           await supabase.auth.signOut()
           setUser(null)
           setUserIsAdmin(false)
