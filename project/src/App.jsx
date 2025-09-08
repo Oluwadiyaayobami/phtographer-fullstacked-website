@@ -1,104 +1,100 @@
-import React, { useEffect } from 'react'
-import { BrowserRouter as Router, Routes, Route, useNavigate } from 'react-router-dom'
-import { Toaster } from 'react-hot-toast'
-import { AuthProvider, useAuth } from './context/AuthContext'
-import Navbar from './components/Navbar'
-import Footer from './components/Footer'
-import Home from './pages/Home'
-import Dashboard from './pages/Dashboard'
-import AdminDashboard from './pages/AdminDashboard'
-import AuthForm from './components/AuthForm'
-
-// Redirect component
-const AuthRedirect = () => {
-  const { user, role, loading } = useAuth()
-  const navigate = useNavigate()
-
-  useEffect(() => {
-    if (!loading && user) {
-      if (role === 'admin') {
-        navigate('/AdminDashboard')
-      } else {
-        navigate('/dashboard')
-      }
-    }
-  }, [user, role, loading, navigate])
-
-  return null
-}
+import React from 'react';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { Toaster } from 'react-hot-toast';
+import { AuthProvider, useAuth } from './context/AuthContext';
+import Navbar from './components/Navbar';
+import Footer from './components/Footer';
+import Home from './pages/Home';
+import Dashboard from './pages/Dashboard';
+import AdminDashboard from './pages/AdminDashboard';
+import AuthForm from './components/AuthForm';
 
 // Protected route wrapper
 const ProtectedRoute = ({ element, allowedRoles }) => {
-  const { user, role, loading } = useAuth()
+  const { user, role, loading } = useAuth();
 
-  if (loading) return <div className="text-center p-6">Loading...</div>
+  if (loading) return <div className="text-center p-6">Loading...</div>;
 
-  if (!user) return <AuthForm mode="signin" />
+  if (!user) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <div className="text-center p-6">Unauthorized 🚫</div>
+    return <div className="text-center p-6">Unauthorized 🚫</div>;
   }
 
-  return element
-}
+  return element;
+};
+
+// Redirect logged-in users away from login/signup pages
+const AuthRedirect = ({ children }) => {
+  const { user, role, loading } = useAuth();
+
+  if (loading) return null;
+
+  if (user) {
+    return <Navigate to={role === 'admin' ? '/admin-dashboard' : '/dashboard'} replace />;
+  }
+
+  return children;
+};
 
 function App() {
   return (
-    <AuthProvider>
-      <Router>
+    <Router>
+      <AuthProvider>
         <div className="flex flex-col min-h-screen">
           <Navbar />
-          
-          <main className="flex-1">
-            <AuthRedirect />
 
+          <main className="flex-1">
             <Routes>
+              {/* Public Routes */}
               <Route path="/" element={<Home />} />
-              <Route path="/login" element={<AuthForm mode="signin" />} />
-              <Route path="/signup" element={<AuthForm mode="signup" />} />
-              
+              <Route
+                path="/login"
+                element={
+                  <AuthRedirect>
+                    <AuthForm mode="signin" />
+                  </AuthRedirect>
+                }
+              />
+              <Route
+                path="/signup"
+                element={
+                  <AuthRedirect>
+                    <AuthForm mode="signup" />
+                  </AuthRedirect>
+                }
+              />
+
               {/* Protected Routes */}
-              <Route 
-                path="/dashboard" 
-                element={<ProtectedRoute element={<Dashboard />} allowedRoles={['user']} />} 
+              <Route
+                path="/dashboard"
+                element={<ProtectedRoute element={<Dashboard />} allowedRoles={['user']} />}
               />
-              <Route 
-                path="/AdminDashboard" 
-                element={<ProtectedRoute element={<AdminDashboard />} allowedRoles={['admin']} />} 
+              <Route
+                path="/admin-dashboard"
+                element={<ProtectedRoute element={<AdminDashboard />} allowedRoles={['admin']} />}
               />
+
+              {/* Fallback route */}
+              <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
 
           <Footer />
-          
+
           <Toaster
             position="top-right"
             toastOptions={{
               duration: 4000,
-              style: {
-                background: '#363636',
-                color: '#fff',
-              },
-              success: {
-                duration: 3000,
-                iconTheme: {
-                  primary: '#10B981',
-                  secondary: '#fff',
-                },
-              },
-              error: {
-                duration: 5000,
-                iconTheme: {
-                  primary: '#EF4444',
-                  secondary: '#fff',
-                },
-              },
+              style: { background: '#363636', color: '#fff' },
+              success: { duration: 3000, iconTheme: { primary: '#10B981', secondary: '#fff' } },
+              error: { duration: 5000, iconTheme: { primary: '#EF4444', secondary: '#fff' } },
             }}
           />
         </div>
-      </Router>
-    </AuthProvider>
-  )
+      </AuthProvider>
+    </Router>
+  );
 }
 
-export default App
+export default App;

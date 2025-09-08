@@ -1,110 +1,94 @@
-import React, { useState } from "react"
-import { motion } from "framer-motion"
-import { Eye, EyeOff, Camera } from "lucide-react"
-import { Link, useNavigate } from "react-router-dom"
-import toast from "react-hot-toast"
-import { supabase } from "../utils/supabase"
-
-const ADMIN_SETUP_KEY = "admin123" // 🔑 Change this to your real secret
+import React, { useState } from "react";
+import { motion } from "framer-motion";
+import { Eye, EyeOff, Camera } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import toast from "react-hot-toast";
+import { supabase } from "../utils/supabase";
+import { useAuth } from "../context/AuthContext";
 
 const AuthForm = ({ mode }) => {
+  const { setUser, setRole } = useAuth(); // Update context directly
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
-    adminKey: "",
-  })
-  const [showPassword, setShowPassword] = useState(false)
-  const [loading, setLoading] = useState(false)
-  const navigate = useNavigate()
+  });
+  const [showPassword, setShowPassword] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
 
   const handleChange = (e) => {
-    setFormData({
-      ...formData,
-      [e.target.name]: e.target.value,
-    })
-  }
+    setFormData({ ...formData, [e.target.name]: e.target.value });
+  };
 
   const handleSubmit = async (e) => {
-    e.preventDefault()
-    setLoading(true)
+    e.preventDefault();
+    setLoading(true);
 
     try {
       if (mode === "signup") {
         if (formData.password !== formData.confirmPassword) {
-          toast.error("Passwords do not match")
-          setLoading(false)
-          return
+          toast.error("Passwords do not match");
+          setLoading(false);
+          return;
         }
 
-        // ✅ Role logic
-        const role =
-          formData.adminKey === ADMIN_SETUP_KEY ? "admin" : "user"
-
-        // ✅ Create account with role inside metadata
+        // Create user in Supabase Auth
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
-          options: {
-            data: {
-              name: formData.name,
-              role,
-            },
-          },
-        })
-        if (error) throw error
+          options: { data: { name: formData.name } },
+        });
+        if (error) throw error;
 
         if (data.user) {
-          // ✅ Mirror into users table
-          const { error: insertError } = await supabase.from("users").insert([
-            {
-              id: data.user.id,
-              email: data.user.email,
-              name: formData.name,
-              role,
-            },
-          ])
-          if (insertError) throw insertError
+          // Insert into `users` table as regular user
+          const { error: insertError } = await supabase
+            .from("users")
+            .insert([{ id: data.user.id, email: data.user.email, name: formData.name, role: "user" }]);
+          if (insertError) throw insertError;
         }
 
-        toast.success(`Account created as ${role}`)
-        if (role === "admin") {
-          navigate("/AdminDashboard")
-        } else {
-          navigate("/login")
-        }
+        toast.success("Account created successfully!");
+        navigate("/login");
       } else {
-        // 🔑 Sign in
+        // Sign in
         const { data: signInData, error: signInError } =
           await supabase.auth.signInWithPassword({
             email: formData.email,
             password: formData.password,
-          })
-        if (signInError) throw signInError
+          });
+        if (signInError) throw signInError;
 
-        const user = signInData.user
-        if (!user) throw new Error("Login failed, no user found.")
+        const user = signInData.user;
+        if (!user) throw new Error("Login failed, no user found.");
 
-        // ✅ Role from Auth metadata
-        const role = user.user_metadata?.role || "user"
+        // Fetch role from DB
+        const { data: profile, error: profileError } = await supabase
+          .from("users")
+          .select("role")
+          .eq("id", user.id)
+          .maybeSingle();
+        if (profileError || !profile) throw new Error("User role not found");
 
-        toast.success("Signed in successfully!")
+        // Update context immediately
+        setUser(user);
+        setRole(profile.role);
 
-        // 🚀 Redirect based on role
-        if (role === "admin") {
-          navigate("/AdminDashboard")
-        } else {
-          navigate("/dashboard")
-        }
+        toast.success("Signed in successfully!");
+
+        // Redirect based on role
+        if (profile.role === "admin") navigate("/admin-dashboard");
+        else navigate("/dashboard");
       }
     } catch (error) {
-      console.error("Auth error:", error)
-      toast.error(error.message || "Authentication failed")
+      console.error("Auth error:", error);
+      toast.error(error.message || "Authentication failed");
     } finally {
-      setLoading(false)
+      setLoading(false);
     }
-  }
+  };
 
   return (
     <div className="min-h-screen bg-black flex items-center justify-center py-12 px-4 sm:px-6 lg:px-8">
@@ -115,16 +99,10 @@ const AuthForm = ({ mode }) => {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <Link
-            to="/"
-            className="flex items-center justify-center space-x-2 mb-6"
-          >
+          <Link to="/" className="flex items-center justify-center space-x-2 mb-6">
             <Camera className="h-12 w-12 text-white" />
-            <span className="text-2xl font-bold text-white">
-              PLENATHEGRAPHER
-            </span>
+            <span className="text-2xl font-bold text-white">PLENATHEGRAPHER</span>
           </Link>
-
           <h2 className="text-3xl font-bold text-white">
             {mode === "signup" ? "Create Account" : "Sign In"}
           </h2>
@@ -143,32 +121,24 @@ const AuthForm = ({ mode }) => {
           onSubmit={handleSubmit}
         >
           {mode === "signup" && (
-            <>
-              <div>
-                <label
-                  htmlFor="name"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Full Name *
-                </label>
-                <input
-                  type="text"
-                  id="name"
-                  name="name"
-                  value={formData.name}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-            </>
+            <div>
+              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                Full Name *
+              </label>
+              <input
+                type="text"
+                id="name"
+                name="name"
+                value={formData.name}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                required
+              />
+            </div>
           )}
 
           <div>
-            <label
-              htmlFor="email"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
+            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
               Email Address *
             </label>
             <input
@@ -183,10 +153,7 @@ const AuthForm = ({ mode }) => {
           </div>
 
           <div>
-            <label
-              htmlFor="password"
-              className="block text-sm font-medium text-gray-700 mb-2"
-            >
+            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
               Password *
             </label>
             <div className="relative">
@@ -204,54 +171,26 @@ const AuthForm = ({ mode }) => {
                 className="absolute inset-y-0 right-0 pr-3 flex items-center"
                 onClick={() => setShowPassword(!showPassword)}
               >
-                {showPassword ? (
-                  <EyeOff className="h-5 w-5 text-gray-400" />
-                ) : (
-                  <Eye className="h-5 w-5 text-gray-400" />
-                )}
+                {showPassword ? <EyeOff className="h-5 w-5 text-gray-400" /> : <Eye className="h-5 w-5 text-gray-400" />}
               </button>
             </div>
           </div>
 
           {mode === "signup" && (
-            <>
-              <div>
-                <label
-                  htmlFor="confirmPassword"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Confirm Password *
-                </label>
-                <input
-                  type="password"
-                  id="confirmPassword"
-                  name="confirmPassword"
-                  value={formData.confirmPassword}
-                  onChange={handleChange}
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                  required
-                />
-              </div>
-
-              {/* ✅ Optional Admin Key */}
-              <div>
-                <label
-                  htmlFor="adminKey"
-                  className="block text-sm font-medium text-gray-700 mb-2"
-                >
-                  Admin Setup Key (optional)
-                </label>
-                <input
-                  type="text"
-                  id="adminKey"
-                  name="adminKey"
-                  value={formData.adminKey}
-                  onChange={handleChange}
-                  placeholder="Leave empty for user account"
-                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                />
-              </div>
-            </>
+            <div>
+              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                Confirm Password *
+              </label>
+              <input
+                type="password"
+                id="confirmPassword"
+                name="confirmPassword"
+                value={formData.confirmPassword}
+                onChange={handleChange}
+                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                required
+              />
+            </div>
           )}
 
           <button
@@ -272,20 +211,14 @@ const AuthForm = ({ mode }) => {
             {mode === "signup" ? (
               <p className="text-gray-600">
                 Already have an account?{" "}
-                <Link
-                  to="/login"
-                  className="font-medium text-black hover:text-gray-800"
-                >
+                <Link to="/login" className="font-medium text-black hover:text-gray-800">
                   Sign in here
                 </Link>
               </p>
             ) : (
               <p className="text-gray-600">
                 Don't have an account?{" "}
-                <Link
-                  to="/signup"
-                  className="font-medium text-black hover:text-gray-800"
-                >
+                <Link to="/signup" className="font-medium text-black hover:text-gray-800">
                   Create one here
                 </Link>
               </p>
@@ -294,7 +227,7 @@ const AuthForm = ({ mode }) => {
         </motion.form>
       </div>
     </div>
-  )
-}
+  );
+};
 
-export default AuthForm
+export default AuthForm;
