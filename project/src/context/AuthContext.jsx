@@ -1,61 +1,62 @@
-import React, { createContext, useContext, useEffect, useState } from 'react'
-import { supabase, getCurrentUser, isAdmin } from '../utils/supabase'
+import React, { createContext, useContext, useEffect, useState } from "react"
+import { supabase } from "../utils/supabase"
 
 const AuthContext = createContext()
 
 export const useAuth = () => {
   const context = useContext(AuthContext)
   if (!context) {
-    throw new Error('useAuth must be used within an AuthProvider')
+    throw new Error("useAuth must be used within an AuthProvider")
   }
   return context
 }
 
 export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null)
+  const [role, setRole] = useState(null)
   const [loading, setLoading] = useState(true)
-  const [userIsAdmin, setUserIsAdmin] = useState(false)
 
   useEffect(() => {
-    // Get initial session
-    const getInitialSession = async () => {
-      const { data: { session } } = await supabase.auth.getSession()
-      if (session?.user) {
+    const getSession = async () => {
+      setLoading(true)
+      const { data: { session }, error } = await supabase.auth.getSession()
+
+      if (error) {
+        console.error("Error getting session:", error)
+        setUser(null)
+        setRole(null)
+      } else if (session?.user) {
         setUser(session.user)
-        const adminStatus = await isAdmin(session.user.id)
-        setUserIsAdmin(adminStatus)
+        setRole(session.user.user_metadata?.role || "user") // ✅ role comes from metadata
+      } else {
+        setUser(null)
+        setRole(null)
       }
+
       setLoading(false)
     }
 
-    getInitialSession()
+    getSession()
 
-    // Listen for auth changes
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
-        if (session?.user) {
-          setUser(session.user)
-          const adminStatus = await isAdmin(session.user.id)
-          setUserIsAdmin(adminStatus)
-        } else {
-          setUser(null)
-          setUserIsAdmin(false)
-        }
-        setLoading(false)
+    const {
+      data: { subscription }
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      if (session?.user) {
+        setUser(session.user)
+        setRole(session.user.user_metadata?.role || "user")
+      } else {
+        setUser(null)
+        setRole(null)
       }
-    )
+    })
 
-    return () => subscription?.unsubscribe()
+    return () => {
+      subscription.unsubscribe()
+    }
   }, [])
 
-  const value = {
-    user,
-    userIsAdmin,
-    loading
-  }
-
   return (
-    <AuthContext.Provider value={value}>
+    <AuthContext.Provider value={{ user, role, loading }}>
       {children}
     </AuthContext.Provider>
   )

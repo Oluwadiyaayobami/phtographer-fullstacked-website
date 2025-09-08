@@ -1,7 +1,7 @@
 import React from 'react'
 import { useAuth } from '../context/AuthContext'
 import UserDashboard from '../components/UserDashboard'
-import AdminDashboard from '../components/AdminDashboard'
+import AdminDashboard from './AdminDashboard'
 import { motion } from 'framer-motion'
 
 const Dashboard = () => {

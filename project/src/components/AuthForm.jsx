@@ -1,16 +1,19 @@
-import React, { useState } from 'react'
-import { motion } from 'framer-motion'
-import { Eye, EyeOff, Camera } from 'lucide-react'
-import { Link, useNavigate } from 'react-router-dom'
-import toast from 'react-hot-toast'
-import { signIn, signUp } from '../utils/supabase'
+import React, { useState } from "react"
+import { motion } from "framer-motion"
+import { Eye, EyeOff, Camera } from "lucide-react"
+import { Link, useNavigate } from "react-router-dom"
+import toast from "react-hot-toast"
+import { supabase } from "../utils/supabase"
+
+const ADMIN_SETUP_KEY = "admin123" // 🔑 Change this to your real secret
 
 const AuthForm = ({ mode }) => {
   const [formData, setFormData] = useState({
-    name: '',
-    email: '',
-    password: '',
-    confirmPassword: ''
+    name: "",
+    email: "",
+    password: "",
+    confirmPassword: "",
+    adminKey: "",
   })
   const [showPassword, setShowPassword] = useState(false)
   const [loading, setLoading] = useState(false)
@@ -19,7 +22,7 @@ const AuthForm = ({ mode }) => {
   const handleChange = (e) => {
     setFormData({
       ...formData,
-      [e.target.name]: e.target.value
+      [e.target.name]: e.target.value,
     })
   }
 
@@ -28,28 +31,76 @@ const AuthForm = ({ mode }) => {
     setLoading(true)
 
     try {
-      if (mode === 'signup') {
+      if (mode === "signup") {
         if (formData.password !== formData.confirmPassword) {
-          toast.error('Passwords do not match')
+          toast.error("Passwords do not match")
           setLoading(false)
           return
         }
 
-        const { error } = await signUp(formData.email, formData.password, formData.name)
+        // ✅ Role logic
+        const role =
+          formData.adminKey === ADMIN_SETUP_KEY ? "admin" : "user"
+
+        // ✅ Create account with role inside metadata
+        const { data, error } = await supabase.auth.signUp({
+          email: formData.email,
+          password: formData.password,
+          options: {
+            data: {
+              name: formData.name,
+              role,
+            },
+          },
+        })
         if (error) throw error
 
-        toast.success('Account created successfully!')
-        navigate('/login')
+        if (data.user) {
+          // ✅ Mirror into users table
+          const { error: insertError } = await supabase.from("users").insert([
+            {
+              id: data.user.id,
+              email: data.user.email,
+              name: formData.name,
+              role,
+            },
+          ])
+          if (insertError) throw insertError
+        }
+
+        toast.success(`Account created as ${role}`)
+        if (role === "admin") {
+          navigate("/AdminDashboard")
+        } else {
+          navigate("/login")
+        }
       } else {
-        const { error } = await signIn(formData.email, formData.password)
-        if (error) throw error
+        // 🔑 Sign in
+        const { data: signInData, error: signInError } =
+          await supabase.auth.signInWithPassword({
+            email: formData.email,
+            password: formData.password,
+          })
+        if (signInError) throw signInError
 
-        toast.success('Signed in successfully!')
-        navigate('/dashboard')
+        const user = signInData.user
+        if (!user) throw new Error("Login failed, no user found.")
+
+        // ✅ Role from Auth metadata
+        const role = user.user_metadata?.role || "user"
+
+        toast.success("Signed in successfully!")
+
+        // 🚀 Redirect based on role
+        if (role === "admin") {
+          navigate("/AdminDashboard")
+        } else {
+          navigate("/dashboard")
+        }
       }
     } catch (error) {
-      console.error('Auth error:', error)
-      toast.error(error.message || 'Authentication failed')
+      console.error("Auth error:", error)
+      toast.error(error.message || "Authentication failed")
     } finally {
       setLoading(false)
     }
@@ -64,18 +115,23 @@ const AuthForm = ({ mode }) => {
           transition={{ duration: 0.6 }}
           className="text-center"
         >
-          <Link to="/" className="flex items-center justify-center space-x-2 mb-6">
+          <Link
+            to="/"
+            className="flex items-center justify-center space-x-2 mb-6"
+          >
             <Camera className="h-12 w-12 text-white" />
-            <span className="text-2xl font-bold text-white">PLENATHEGRAPHER</span>
+            <span className="text-2xl font-bold text-white">
+              PLENATHEGRAPHER
+            </span>
           </Link>
 
           <h2 className="text-3xl font-bold text-white">
-            {mode === 'signup' ? 'Create Account' : 'Sign In'}
+            {mode === "signup" ? "Create Account" : "Sign In"}
           </h2>
           <p className="mt-2 text-gray-400">
-            {mode === 'signup'
-              ? 'Join our exclusive community of photography enthusiasts'
-              : 'Welcome back to your photography portal'}
+            {mode === "signup"
+              ? "Join our exclusive community of photography enthusiasts"
+              : "Welcome back to your photography portal"}
           </p>
         </motion.div>
 
@@ -86,25 +142,33 @@ const AuthForm = ({ mode }) => {
           className="bg-white rounded-lg p-8 shadow-2xl space-y-6"
           onSubmit={handleSubmit}
         >
-          {mode === 'signup' && (
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                required
-              />
-            </div>
+          {mode === "signup" && (
+            <>
+              <div>
+                <label
+                  htmlFor="name"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
+            </>
           )}
 
           <div>
-            <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="email"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Email Address *
             </label>
             <input
@@ -119,12 +183,15 @@ const AuthForm = ({ mode }) => {
           </div>
 
           <div>
-            <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-2">
+            <label
+              htmlFor="password"
+              className="block text-sm font-medium text-gray-700 mb-2"
+            >
               Password *
             </label>
             <div className="relative">
               <input
-                type={showPassword ? 'text' : 'password'}
+                type={showPassword ? "text" : "password"}
                 id="password"
                 name="password"
                 value={formData.password}
@@ -146,24 +213,45 @@ const AuthForm = ({ mode }) => {
             </div>
           </div>
 
-          {mode === 'signup' && (
-            <div>
-              <label
-                htmlFor="confirmPassword"
-                className="block text-sm font-medium text-gray-700 mb-2"
-              >
-                Confirm Password *
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                required
-              />
-            </div>
+          {mode === "signup" && (
+            <>
+              <div>
+                <label
+                  htmlFor="confirmPassword"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Confirm Password *
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
+
+              {/* ✅ Optional Admin Key */}
+              <div>
+                <label
+                  htmlFor="adminKey"
+                  className="block text-sm font-medium text-gray-700 mb-2"
+                >
+                  Admin Setup Key (optional)
+                </label>
+                <input
+                  type="text"
+                  id="adminKey"
+                  name="adminKey"
+                  value={formData.adminKey}
+                  onChange={handleChange}
+                  placeholder="Leave empty for user account"
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                />
+              </div>
+            </>
           )}
 
           <button
@@ -172,26 +260,32 @@ const AuthForm = ({ mode }) => {
             className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
             {loading
-              ? mode === 'signup'
-                ? 'Creating Account...'
-                : 'Signing In...'
-              : mode === 'signup'
-              ? 'Create Account'
-              : 'Sign In'}
+              ? mode === "signup"
+                ? "Creating Account..."
+                : "Signing In..."
+              : mode === "signup"
+              ? "Create Account"
+              : "Sign In"}
           </button>
 
           <div className="text-center">
-            {mode === 'signup' ? (
+            {mode === "signup" ? (
               <p className="text-gray-600">
-                Already have an account?{' '}
-                <Link to="/login" className="font-medium text-black hover:text-gray-800">
+                Already have an account?{" "}
+                <Link
+                  to="/login"
+                  className="font-medium text-black hover:text-gray-800"
+                >
                   Sign in here
                 </Link>
               </p>
             ) : (
               <p className="text-gray-600">
-                Don't have an account?{' '}
-                <Link to="/signup" className="font-medium text-black hover:text-gray-800">
+                Don't have an account?{" "}
+                <Link
+                  to="/signup"
+                  className="font-medium text-black hover:text-gray-800"
+                >
                   Create one here
                 </Link>
               </p>
