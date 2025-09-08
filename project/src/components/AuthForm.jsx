@@ -37,13 +37,13 @@ const AuthForm = ({ mode }) => {
 
         const { error } = await signUp(formData.email, formData.password, formData.name)
         if (error) throw error
-        
+
         toast.success('Account created successfully!')
         navigate('/login')
       } else {
         const { error } = await signIn(formData.email, formData.password)
         if (error) throw error
-        
+
         toast.success('Signed in successfully!')
         navigate('/dashboard')
       }
@@ -68,15 +68,14 @@ const AuthForm = ({ mode }) => {
             <Camera className="h-12 w-12 text-white" />
             <span className="text-2xl font-bold text-white">PLENATHEGRAPHER</span>
           </Link>
-          
+
           <h2 className="text-3xl font-bold text-white">
             {mode === 'signup' ? 'Create Account' : 'Sign In'}
           </h2>
           <p className="mt-2 text-gray-400">
-            {mode === 'signup' 
-              ? 'Join our exclusive community of photography enthusiasts' 
-              : 'Welcome back to your photography portal'
-            }
+            {mode === 'signup'
+              ? 'Join our exclusive community of photography enthusiasts'
+              : 'Welcome back to your photography portal'}
           </p>
         </motion.div>
 
@@ -149,7 +148,10 @@ const AuthForm = ({ mode }) => {
 
           {mode === 'signup' && (
             <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+              <label
+                htmlFor="confirmPassword"
+                className="block text-sm font-medium text-gray-700 mb-2"
+              >
                 Confirm Password *
               </label>
               <input
@@ -169,10 +171,13 @@ const AuthForm = ({ mode }) => {
             disabled={loading}
             className="w-full bg-black text-white py-3 px-4 rounded-lg hover:bg-gray-800 transition-colors disabled:opacity-50 disabled:cursor-not-allowed"
           >
-            {loading 
-              ? (mode === 'signup' ? 'Creating Account...' : 'Signing In...') 
-              : (mode === 'signup' ? 'Create Account' : 'Sign In')
-            }
+            {loading
+              ? mode === 'signup'
+                ? 'Creating Account...'
+                : 'Signing In...'
+              : mode === 'signup'
+              ? 'Create Account'
+              : 'Sign In'}
           </button>
 
           <div className="text-center">
