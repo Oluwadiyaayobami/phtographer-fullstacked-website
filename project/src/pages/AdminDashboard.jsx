@@ -1,15 +1,23 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, Users, Image as ImageIcon, ShoppingCart, Settings, CheckCircle, XCircle, Eye } from 'lucide-react'
+import { Upload, Users, Image as ImageIcon, ShoppingCart, Settings, CheckCircle, XCircle, Eye, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import { getAllPurchaseRequests, updatePurchaseRequestStatus } from '../utils/supabase'
 import toast from 'react-hot-toast'
 
 const AdminDashboard = () => {
-  const { user } = useAuth()
+  const { user, logout } = useAuth()
   const [activeTab, setActiveTab] = useState('overview')
   const [purchaseRequests, setPurchaseRequests] = useState([])
   const [loading, setLoading] = useState(false)
+
+  // Redirect or block if user is not admin
+  useEffect(() => {
+    if (!user || !user.is_admin) {
+      toast.error('Access denied: Admins only')
+      // Optionally navigate to login or home here
+    }
+  }, [user])
 
   useEffect(() => {
     fetchPurchaseRequests()
@@ -82,16 +90,23 @@ const AdminDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-6 mb-8"
+          className="bg-white rounded-lg shadow-sm p-6 mb-8 flex justify-between items-center"
         >
-          <div className="flex justify-between items-center">
-            <div>
-              <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
-              <p className="text-gray-600 mt-1">Manage your photography business</p>
-            </div>
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">Admin Dashboard</h1>
+            <p className="text-gray-600 mt-1">Manage your photography business</p>
+          </div>
+          <div className="flex items-center space-x-4">
             <div className="bg-black text-white px-4 py-2 rounded-lg">
               <span className="text-sm">Admin Panel</span>
             </div>
+            <button
+              onClick={logout}
+              className="flex items-center space-x-1 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            >
+              <LogOut className="w-4 h-4" />
+              <span>Logout</span>
+            </button>
           </div>
         </motion.div>
 
@@ -132,6 +147,8 @@ const AdminDashboard = () => {
             className="lg:col-span-3"
           >
             <div className="bg-white rounded-lg shadow-sm p-6">
+
+              {/* --- Overview Tab --- */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Business Overview</h2>
@@ -147,7 +164,6 @@ const AdminDashboard = () => {
                         <ShoppingCart className="w-8 h-8 text-blue-600" />
                       </div>
                     </div>
-                    
                     <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -157,7 +173,6 @@ const AdminDashboard = () => {
                         <Eye className="w-8 h-8 text-yellow-600" />
                       </div>
                     </div>
-                    
                     <div className="bg-green-50 border border-green-200 rounded-lg p-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -167,7 +182,6 @@ const AdminDashboard = () => {
                         <CheckCircle className="w-8 h-8 text-green-600" />
                       </div>
                     </div>
-                    
                     <div className="bg-red-50 border border-red-200 rounded-lg p-6">
                       <div className="flex items-center justify-between">
                         <div>
@@ -190,7 +204,6 @@ const AdminDashboard = () => {
                         <h4 className="font-semibold text-gray-900">Review Requests</h4>
                         <p className="text-sm text-gray-600">Manage purchase requests</p>
                       </button>
-                      
                       <button
                         onClick={() => setActiveTab('upload')}
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow text-left"
@@ -199,7 +212,6 @@ const AdminDashboard = () => {
                         <h4 className="font-semibold text-gray-900">Upload Content</h4>
                         <p className="text-sm text-gray-600">Add new collections</p>
                       </button>
-                      
                       <button
                         onClick={() => setActiveTab('users')}
                         className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow text-left"
@@ -213,10 +225,10 @@ const AdminDashboard = () => {
                 </div>
               )}
 
+              {/* --- Purchase Requests Tab --- */}
               {activeTab === 'requests' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Purchase Requests</h2>
-                  
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <motion.div
@@ -267,12 +279,10 @@ const AdminDashboard = () => {
                                       Requested: {new Date(request.created_at).toLocaleDateString()}
                                     </p>
                                   </div>
-                                  
                                   <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
                                     {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
                                   </span>
                                 </div>
-                                
                                 {request.details && (
                                   <div className="mt-3 p-3 bg-gray-50 rounded-lg">
                                     <p className="text-sm text-gray-700">
@@ -293,7 +303,6 @@ const AdminDashboard = () => {
                               </div>
                             </div>
                           </div>
-                          
                           {request.status === 'pending' && (
                             <div className="mt-4 flex space-x-3">
                               <button
@@ -303,7 +312,6 @@ const AdminDashboard = () => {
                                 <CheckCircle className="w-4 h-4" />
                                 <span>Approve</span>
                               </button>
-                              
                               <button
                                 onClick={() => handleStatusUpdate(request.id, 'denied')}
                                 className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
@@ -320,10 +328,10 @@ const AdminDashboard = () => {
                 </div>
               )}
 
+              {/* --- Upload Tab --- */}
               {activeTab === 'upload' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Upload Content</h2>
-                  
                   <div className="bg-blue-50 border border-blue-200 rounded-lg p-6">
                     <div className="flex items-start space-x-3">
                       <Upload className="w-6 h-6 text-blue-600 mt-1" />
@@ -333,7 +341,7 @@ const AdminDashboard = () => {
                         </h3>
                         <p className="text-blue-700 mt-2">
                           This feature requires backend integration with Supabase storage. 
-                          In a production environment, you would implement:
+                          In production, implement:
                         </p>
                         <ul className="mt-4 space-y-2 text-blue-700">
                           <li>• Image upload to Supabase Storage buckets</li>
@@ -344,7 +352,6 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
-                  
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
                     <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">
@@ -360,10 +367,10 @@ const AdminDashboard = () => {
                 </div>
               )}
 
+              {/* --- Users Tab --- */}
               {activeTab === 'users' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-                  
                   <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6">
                     <div className="flex items-start space-x-3">
                       <Users className="w-6 h-6 text-yellow-600 mt-1" />
@@ -372,8 +379,7 @@ const AdminDashboard = () => {
                           User Management System
                         </h3>
                         <p className="text-yellow-700 mt-2">
-                          This feature requires additional database queries and user management logic. 
-                          In a production environment, you would implement:
+                          In production, implement:
                         </p>
                         <ul className="mt-4 space-y-2 text-yellow-700">
                           <li>• User listing with search and filters</li>
@@ -387,10 +393,10 @@ const AdminDashboard = () => {
                 </div>
               )}
 
+              {/* --- Settings Tab --- */}
               {activeTab === 'settings' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-                  
                   <div className="space-y-6">
                     <div className="bg-white border border-gray-200 rounded-lg p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">
@@ -403,20 +409,18 @@ const AdminDashboard = () => {
                           </label>
                           <input
                             type="text"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                            value="PLENATHEGRAPHER"
-                            readOnly
+                            className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-black focus:border-black sm:text-sm"
+                            placeholder="PLENATHEGRAPHER"
                           />
                         </div>
                         <div>
                           <label className="block text-sm font-medium text-gray-700 mb-2">
-                            Contact Email
+                            Email
                           </label>
                           <input
                             type="email"
-                            className="w-full px-4 py-2 border border-gray-300 rounded-lg"
-                            value="hello@plenathegrapher.com"
-                            readOnly
+                            className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-black focus:border-black sm:text-sm"
+                            placeholder="contact@plenathegrapher.com"
                           />
                         </div>
                       </div>
@@ -424,36 +428,23 @@ const AdminDashboard = () => {
 
                     <div className="bg-white border border-gray-200 rounded-lg p-6">
                       <h3 className="text-lg font-semibold text-gray-900 mb-4">
-                        Security Settings
+                        Preferences
                       </h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium text-gray-900">Two-Factor Authentication</h4>
-                            <p className="text-sm text-gray-600">Add extra security to your account</p>
-                          </div>
-                          <button className="bg-black text-white px-4 py-2 rounded-lg hover:bg-gray-800 transition-colors">
-                            Enable
-                          </button>
+                      <div className="space-y-3">
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" className="h-4 w-4 text-black border-gray-300 rounded" />
+                          <label className="text-gray-700">Enable Email Notifications</label>
                         </div>
-                        
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <h4 className="font-medium text-gray-900">Session Timeout</h4>
-                            <p className="text-sm text-gray-600">Automatically sign out after inactivity</p>
-                          </div>
-                          <select className="border border-gray-300 rounded-lg px-3 py-2">
-                            <option>30 minutes</option>
-                            <option>1 hour</option>
-                            <option>2 hours</option>
-                            <option>Never</option>
-                          </select>
+                        <div className="flex items-center space-x-2">
+                          <input type="checkbox" className="h-4 w-4 text-black border-gray-300 rounded" />
+                          <label className="text-gray-700">Enable Dark Mode</label>
                         </div>
                       </div>
                     </div>
                   </div>
                 </div>
               )}
+
             </div>
           </motion.div>
         </div>

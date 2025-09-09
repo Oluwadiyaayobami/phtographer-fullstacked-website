@@ -4,10 +4,8 @@ import { Eye, EyeOff, Camera } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
 import { supabase } from "../utils/supabase";
-import { useAuth } from "../context/AuthContext";
 
 const AuthForm = ({ mode }) => {
-  const { setUser, setRole } = useAuth(); // Update context directly
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -34,7 +32,7 @@ const AuthForm = ({ mode }) => {
           return;
         }
 
-        // Create user in Supabase Auth
+        // Sign up user
         const { data, error } = await supabase.auth.signUp({
           email: formData.email,
           password: formData.password,
@@ -42,45 +40,24 @@ const AuthForm = ({ mode }) => {
         });
         if (error) throw error;
 
-        if (data.user) {
-          // Insert into `users` table as regular user
-          const { error: insertError } = await supabase
-            .from("users")
-            .insert([{ id: data.user.id, email: data.user.email, name: formData.name, role: "user" }]);
-          if (insertError) throw insertError;
-        }
+        // Insert into 'users' table
+        const { error: insertError } = await supabase
+          .from("users")
+          .insert([{ id: data.user.id, email: data.user.email, name: formData.name, role: "user" }]);
+        if (insertError) throw insertError;
 
         toast.success("Account created successfully!");
         navigate("/login");
       } else {
         // Sign in
-        const { data: signInData, error: signInError } =
-          await supabase.auth.signInWithPassword({
-            email: formData.email,
-            password: formData.password,
-          });
+        const { error: signInError } = await supabase.auth.signInWithPassword({
+          email: formData.email,
+          password: formData.password,
+        });
         if (signInError) throw signInError;
 
-        const user = signInData.user;
-        if (!user) throw new Error("Login failed, no user found.");
-
-        // Fetch role from DB
-        const { data: profile, error: profileError } = await supabase
-          .from("users")
-          .select("role")
-          .eq("id", user.id)
-          .maybeSingle();
-        if (profileError || !profile) throw new Error("User role not found");
-
-        // Update context immediately
-        setUser(user);
-        setRole(profile.role);
-
         toast.success("Signed in successfully!");
-
-        // Redirect based on role
-        if (profile.role === "admin") navigate("/admin-dashboard");
-        else navigate("/dashboard");
+        // Redirect handled automatically in AuthContext
       }
     } catch (error) {
       console.error("Auth error:", error);
