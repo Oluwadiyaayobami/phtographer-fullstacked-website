@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { User, Lock, ShoppingCart, LogOut, Eye, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { useAuth } from './src/context/AuthContext'
-import { getUserPurchaseRequests, signOut } from './src/utils/supabase'
+import { useAuth } from '../context/AuthContext'
+import { getUserPurchaseRequests, signOut } from '../utils/supabase'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import PinModal from './src/components/PinModal'
+import PinModal from './PinModal'
 
 const UserDashboard = () => {
   const { user, role } = useAuth()

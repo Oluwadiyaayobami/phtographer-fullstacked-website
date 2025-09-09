@@ -20,5 +20,5 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "UserDashboard.jsx"]
+  "include": ["src", "src/components/UserDashboard.jsx"]
 }
