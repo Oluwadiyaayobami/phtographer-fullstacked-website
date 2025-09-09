@@ -11,98 +11,93 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState("user"); // default to 'user'
+  const [user, setUser] = useState(null); // includes role
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch role from Supabase users table
-  const fetchUserRole = async (userId) => {
+  // Fetch user from Supabase DB to get role
+  const loadUser = async (authUser) => {
     try {
       const { data, error } = await supabase
         .from("users")
-        .select("role")
-        .eq("id", userId)
-        .maybeSingle();
+        .select("*")
+        .eq("id", authUser.id)
+        .single();
 
       if (error) throw error;
 
-      if (!data || !data.role) return "user"; // fallback to user
-      return data.role === "admin" ? "admin" : "user"; // enforce only two roles
+      const fullUser = { ...authUser, role: data.role };
+      setUser(fullUser);
+      return fullUser;
     } catch (err) {
-      console.error("Error fetching role:", err);
-      return "user";
+      console.error("Error loading user:", err);
+      const fallbackUser = { ...authUser, role: "user" };
+      setUser(fallbackUser);
+      return fallbackUser;
     }
   };
 
+  // Handle session
   const handleSession = async (session) => {
-    if (session?.user) {
-      setUser(session.user);
-      const dbRole = await fetchUserRole(session.user.id);
-      setRole(dbRole);
-    } else {
-      setUser(null);
-      setRole("user"); // default fallback
-    }
+    if (session?.user) await loadUser(session.user);
+    else setUser(null);
     setLoading(false);
   };
 
-  // Initialize auth on load
+  // Initialize on app load
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      try {
-        const { data: { session } } = await supabase.auth.getSession();
-        await handleSession(session);
-      } catch (err) {
-        console.error("Auth init error:", err);
-        setLoading(false);
-      }
+      const { data } = await supabase.auth.getSession();
+      await handleSession(data.session);
     };
-
     init();
 
-    const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        await handleSession(session);
-      }
-    );
+    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
+      handleSession(session);
+    });
 
-    return () => listener.subscription.unsubscribe();
+    return () => subscription?.unsubscribe();
   }, []);
 
-  // Login
-  const login = async (email, password) => {
+  // Signup
+  const signup = async ({ email, password, name }) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
 
-      await handleSession(data.session);
-      return data.user;
+      // Insert user into users table with default role
+      const newUser = { id: data.user.id, email, name, role: "user" };
+      await supabase.from("users").insert([newUser]);
+
+      const fullUser = await loadUser(data.user);
+      navigate("/user-dashboard"); // default role
+      return fullUser;
     } catch (err) {
-      console.error("Login error:", err);
+      console.error("Signup error:", err);
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Signup
-  const signup = async (email, password, additionalData = {}) => {
+  // Login
+  const login = async ({ email, password }) => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.auth.signUp({ email, password });
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
 
-      if (data.user) {
-        // Force role to 'user' for new accounts
-        await supabase.from("users").insert([{ id: data.user.id, email, role: "user", ...additionalData }]);
-        await handleSession({ user: data.user });
-        return data.user;
-      }
+      const fullUser = await loadUser(data.user);
+
+      // Redirect based on role
+      if (fullUser.role === "admin") navigate("/admin-dashboard");
+      else navigate("/user-dashboard");
+
+      return fullUser;
     } catch (err) {
-      console.error("Signup error:", err);
+      console.error("Login error:", err);
       throw err;
     } finally {
       setLoading(false);
@@ -116,8 +111,7 @@ export const AuthProvider = ({ children }) => {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
       setUser(null);
-      setRole("user");
-      navigate("/");
+      navigate("/login");
     } catch (err) {
       console.error("Logout failed:", err);
     } finally {
@@ -126,7 +120,7 @@ export const AuthProvider = ({ children }) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, login, signup, logout }}>
+    <AuthContext.Provider value={{ user, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
