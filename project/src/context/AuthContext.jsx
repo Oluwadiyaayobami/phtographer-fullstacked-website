@@ -39,8 +39,11 @@ export const AuthProvider = ({ children }) => {
 
   // Handle session
   const handleSession = async (session) => {
-    if (session?.user) await loadUser(session.user);
-    else setUser(null);
+    if (session?.user) {
+      await loadUser(session.user);
+    } else {
+      setUser(null);
+    }
     setLoading(false);
   };
 
@@ -67,12 +70,11 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase.auth.signUp({ email, password });
       if (error) throw error;
 
-      // Insert user into users table with default role
       const newUser = { id: data.user.id, email, name, role: "user" };
       await supabase.from("users").insert([newUser]);
 
       const fullUser = await loadUser(data.user);
-      navigate("/user-dashboard"); // default role
+      navigate("/user-dashboard");
       return fullUser;
     } catch (err) {
       console.error("Signup error:", err);
@@ -91,7 +93,6 @@ export const AuthProvider = ({ children }) => {
 
       const fullUser = await loadUser(data.user);
 
-      // Redirect based on role
       if (fullUser.role === "admin") navigate("/admin-dashboard");
       else navigate("/user-dashboard");
 
@@ -108,12 +109,22 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
+      // Get current session
+      const { data } = await supabase.auth.getSession();
+      if (!data.session) {
+        console.warn("No active session to log out from");
+        setUser(null);
+        navigate("/login");
+        return;
+      }
+
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
+
       setUser(null);
       navigate("/login");
     } catch (err) {
-      console.error("Logout failed:", err);
+      console.error("Logout failed:", err.message);
     } finally {
       setLoading(false);
     }
