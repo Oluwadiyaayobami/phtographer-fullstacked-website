@@ -103,53 +103,51 @@ const UserDashboard = () => {
 
   // ------------------- JSX -------------------
   return (
-    <div className="min-h-screen bg-gray-50 py-6 px-4 sm:px-6 lg:px-8">
-      <div className="max-w-7xl mx-auto">
+    <div className="min-h-screen bg-gray-50 py-8">
+      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-4 sm:p-6 mb-6 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0"
+          className="bg-white rounded-lg shadow-sm p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0"
         >
-          <div>
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900">
+          <div className="w-full md:w-auto">
+            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
               Welcome, {user?.user_metadata?.name || user?.email}
             </h1>
-            <p className="text-gray-600 mt-1 text-sm sm:text-base">
-              Manage your account and access exclusive content
-            </p>
+            <p className="text-gray-600 mt-1">Manage your account and access exclusive content</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors text-sm sm:text-base"
+            className="flex items-center space-x-2 bg-red-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-red-700 transition-colors"
           >
-            <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
+            <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </button>
         </motion.div>
 
-        <div className="lg:grid lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-8">
           {/* Sidebar */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-1 mb-6 lg:mb-0"
+            className="md:col-span-1"
           >
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6">
-              <nav className="space-y-2 flex lg:flex-col gap-2 lg:gap-0 overflow-x-auto">
+            <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 overflow-x-auto">
+              <nav className="space-y-2 md:space-y-3 flex md:flex-col md:overflow-visible">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 lg:space-x-3 px-3 py-2 lg:px-4 lg:py-3 rounded-lg text-sm sm:text-base flex-shrink-0 lg:flex-shrink lg:w-full transition-colors ${
+                      className={`flex items-center space-x-3 px-3 py-2 sm:px-4 sm:py-3 rounded-lg text-left transition-colors w-max md:w-full ${
                         activeTab === tab.id
                           ? 'bg-black text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
-                      <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                      <Icon className="w-5 h-5" />
                       <span>{tab.label}</span>
                     </button>
                   )
@@ -162,29 +160,29 @@ const UserDashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="lg:col-span-3"
+            className="md:col-span-3"
           >
             <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 space-y-6">
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Profile Information</h2>
-                  <div className="grid sm:grid-cols-2 gap-4 sm:gap-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Name</label>
-                      <div className="p-2 sm:p-3 bg-gray-50 rounded-lg">{user?.user_metadata?.name || 'Not provided'}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
+                      <div className="p-3 bg-gray-50 rounded-lg break-words">{user?.user_metadata?.name || 'Not provided'}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Email</label>
-                      <div className="p-2 sm:p-3 bg-gray-50 rounded-lg">{user?.email}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
+                      <div className="p-3 bg-gray-50 rounded-lg break-words">{user?.email}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Account Created</label>
-                      <div className="p-2 sm:p-3 bg-gray-50 rounded-lg">{new Date(user?.created_at).toLocaleDateString()}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Created</label>
+                      <div className="p-3 bg-gray-50 rounded-lg">{new Date(user?.created_at).toLocaleDateString()}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 sm:mb-2">Status</label>
-                      <div className="p-2 sm:p-3 bg-green-50 rounded-lg text-green-800">Active</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
+                      <div className="p-3 bg-green-50 rounded-lg text-green-800">Active</div>
                     </div>
                   </div>
                 </div>
@@ -192,18 +190,18 @@ const UserDashboard = () => {
 
               {/* Gallery Tab */}
               {activeTab === 'gallery' && (
-                <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gallery Access</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-4">
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
                     <Eye className="w-6 h-6 text-blue-600 mt-1 sm:mt-0" />
-                    <div className="flex-1">
-                      <h3 className="text-lg sm:text-xl font-semibold text-blue-900">Access Protected Collections</h3>
-                      <p className="text-blue-700 mt-1 sm:mt-2 text-sm sm:text-base">
+                    <div>
+                      <h3 className="text-lg font-semibold text-blue-900">Access Protected Collections</h3>
+                      <p className="text-blue-700 mt-2">
                         Each collection in our gallery is password-protected. Use your PIN to access purchased or assigned collections.
                       </p>
                       <button
                         onClick={() => setShowPinModal(true)}
-                        className="mt-3 sm:mt-4 bg-blue-600 text-white px-3 sm:px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors text-sm sm:text-base"
+                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
                       >
                         Enter Collection PIN
                       </button>
@@ -214,7 +212,7 @@ const UserDashboard = () => {
 
               {/* Purchases Tab */}
               {activeTab === 'purchases' && (
-                <div className="space-y-4 sm:space-y-6">
+                <div className="space-y-6">
                   <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Purchase History</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
@@ -225,10 +223,10 @@ const UserDashboard = () => {
                       />
                     </div>
                   ) : purchaseRequests.length === 0 ? (
-                    <div className="text-center py-8 sm:py-12">
-                      <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-3 sm:mb-4" />
-                      <h3 className="text-lg sm:text-xl font-semibold text-gray-500 mb-1 sm:mb-2">No Purchase Requests Yet</h3>
-                      <p className="text-gray-400 text-sm sm:text-base">Browse our gallery and make your first purchase request.</p>
+                    <div className="text-center py-12">
+                      <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-500 mb-2">No Purchase Requests Yet</h3>
+                      <p className="text-gray-400">Browse our gallery and make your first purchase request.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -237,26 +235,26 @@ const UserDashboard = () => {
                           key={request.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow flex flex-col sm:flex-row justify-between space-y-3 sm:space-y-0"
+                          className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:justify-between sm:items-start"
                         >
-                          <div className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-4">
+                          <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
                             <img
                               src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
                               alt={request.images?.title}
-                              className="w-full sm:w-24 h-40 sm:h-24 object-cover rounded-lg"
+                              className="w-full sm:w-24 h-48 sm:h-18 object-cover rounded-lg"
                             />
-                            <div className="flex-1">
-                              <h3 className="text-lg sm:text-base font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
-                              <p className="text-gray-600 text-sm sm:text-sm">Collection: {request.images?.collections?.title || 'Unknown'}</p>
-                              <p className="text-gray-500 text-xs sm:text-sm mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
+                            <div className="flex-1 min-w-0 mt-4 sm:mt-0">
+                              <h3 className="text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
+                              <p className="text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
+                              <p className="text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
                               {request.details?.size && (
-                                <p className="text-gray-600 text-sm mt-1">
+                                <p className="text-sm text-gray-600 mt-1">
                                   Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
                                 </p>
                               )}
                             </div>
                           </div>
-                          <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                          <div className="flex items-center space-x-2 mt-4 sm:mt-0">
                             {getStatusIcon(request.status)}
                             <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
                               {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
