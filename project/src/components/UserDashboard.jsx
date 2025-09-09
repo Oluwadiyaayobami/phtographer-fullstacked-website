@@ -103,19 +103,19 @@ const UserDashboard = () => {
 
   // ------------------- JSX -------------------
   return (
-    <div className="min-h-screen bg-gray-50 py-8">
+    <div className="min-h-screen bg-gray-50 py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-6 mb-8 flex justify-between items-center"
+          className="bg-white rounded-lg shadow-sm p-4 lg:p-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0"
         >
           <div>
-            <h1 className="text-3xl font-bold text-gray-900">
+            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
               Welcome, {user?.user_metadata?.name || user?.email}
             </h1>
-            <p className="text-gray-600 mt-1">Manage your account and access exclusive content</p>
+            <p className="text-gray-600 mt-1 text-sm lg:text-base">Manage your account and access exclusive content</p>
           </div>
           <button
             onClick={handleSignOut}
@@ -126,29 +126,29 @@ const UserDashboard = () => {
           </button>
         </motion.div>
 
-        <div className="grid lg:grid-cols-4 gap-8">
-          {/* Sidebar */}
+        <div className="grid lg:grid-cols-4 gap-4 lg:gap-8">
+          {/* Sidebar / Tabs */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
-            <div className="bg-white rounded-lg shadow-sm p-6">
-              <nav className="space-y-2">
+            <div className="bg-white rounded-lg shadow-sm p-3 lg:p-6">
+              <nav className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 overflow-x-auto">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
+                      className={`flex items-center space-x-2 lg:space-x-3 px-3 py-2 rounded-lg text-left transition-colors flex-shrink-0 lg:flex-shrink-auto ${
                         activeTab === tab.id
                           ? 'bg-black text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
-                      <span>{tab.label}</span>
+                      <span className="text-sm lg:text-base">{tab.label}</span>
                     </button>
                   )
                 })}
@@ -162,27 +162,29 @@ const UserDashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-3"
           >
-            <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 space-y-6">
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
-                  <div className="grid md:grid-cols-2 gap-6">
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Profile Information</h2>
+                  <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                      <div className="p-3 bg-gray-50 rounded-lg">{user?.user_metadata?.name || 'Not provided'}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Name</label>
+                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">
+                        {user?.user_metadata?.name || 'Not provided'}
+                      </div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <div className="p-3 bg-gray-50 rounded-lg">{user?.email}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Email</label>
+                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">{user?.email}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Account Created</label>
-                      <div className="p-3 bg-gray-50 rounded-lg">{new Date(user?.created_at).toLocaleDateString()}</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Account Created</label>
+                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">{new Date(user?.created_at).toLocaleDateString()}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-2">Status</label>
-                      <div className="p-3 bg-green-50 rounded-lg text-green-800">Active</div>
+                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Status</label>
+                      <div className="p-2 lg:p-3 bg-green-50 rounded-lg text-green-800 text-sm lg:text-base">Active</div>
                     </div>
                   </div>
                 </div>
@@ -191,12 +193,12 @@ const UserDashboard = () => {
               {/* Gallery Tab */}
               {activeTab === 'gallery' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Gallery Access</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex items-start space-x-3">
-                    <Eye className="w-6 h-6 text-blue-600 mt-1" />
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gallery Access</h2>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
+                    <Eye className="w-6 h-6 text-blue-600 mt-1 sm:mt-0" />
                     <div>
                       <h3 className="text-lg font-semibold text-blue-900">Access Protected Collections</h3>
-                      <p className="text-blue-700 mt-2">
+                      <p className="text-blue-700 mt-2 text-sm lg:text-base">
                         Each collection in our gallery is password-protected. Use your PIN to access purchased or assigned collections.
                       </p>
                       <button
@@ -213,7 +215,7 @@ const UserDashboard = () => {
               {/* Purchases Tab */}
               {activeTab === 'purchases' && (
                 <div className="space-y-6">
-                  <h2 className="text-2xl font-bold text-gray-900">Purchase History</h2>
+                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Purchase History</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <motion.div
@@ -226,7 +228,7 @@ const UserDashboard = () => {
                     <div className="text-center py-12">
                       <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-500 mb-2">No Purchase Requests Yet</h3>
-                      <p className="text-gray-400">Browse our gallery and make your first purchase request.</p>
+                      <p className="text-gray-400 text-sm lg:text-base">Browse our gallery and make your first purchase request.</p>
                     </div>
                   ) : (
                     <div className="space-y-4">
@@ -235,32 +237,30 @@ const UserDashboard = () => {
                           key={request.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
+                          className="border border-gray-200 rounded-lg p-4 lg:p-6 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-2 sm:space-y-0 sm:space-x-4"
                         >
-                          <div className="flex items-start justify-between">
-                            <div className="flex space-x-4">
-                              <img
-                                src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
-                                alt={request.images?.title}
-                                className="w-24 h-18 object-cover rounded-lg"
-                              />
-                              <div className="flex-1">
-                                <h3 className="text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
-                                <p className="text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
-                                <p className="text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
-                                {request.details?.size && (
-                                  <p className="text-sm text-gray-600 mt-1">
-                                    Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
-                                  </p>
-                                )}
-                              </div>
+                          <div className="flex space-x-4 w-full sm:w-auto">
+                            <img
+                              src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
+                              alt={request.images?.title}
+                              className="w-full sm:w-24 h-32 sm:h-18 object-cover rounded-lg"
+                            />
+                            <div className="flex-1">
+                              <h3 className="text-md lg:text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
+                              <p className="text-sm text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
+                              <p className="text-xs lg:text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
+                              {request.details?.size && (
+                                <p className="text-xs lg:text-sm text-gray-600 mt-1">
+                                  Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
+                                </p>
+                              )}
                             </div>
-                            <div className="flex items-center space-x-2">
-                              {getStatusIcon(request.status)}
-                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                              </span>
-                            </div>
+                          </div>
+                          <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                            {getStatusIcon(request.status)}
+                            <span className={`px-2 py-1 rounded-full text-xs lg:text-sm font-medium ${getStatusColor(request.status)}`}>
+                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            </span>
                           </div>
                         </motion.div>
                       ))}
