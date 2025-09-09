@@ -1,6 +1,8 @@
-import React, { useState, useEffect } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowDown } from 'lucide-react'
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { ArrowDown } from 'lucide-react';
+import { useAuth } from '../context/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 const images = [
   {
@@ -53,24 +55,32 @@ const images = [
     title: 'EVERYDAY',
     subtitle: 'MOMENTS'
   }
-]
+];
 
 const Hero = () => {
-  const [currentImage, setCurrentImage] = useState(0)
+  const [currentImage, setCurrentImage] = useState(0);
+  const { user } = useAuth();
+  const navigate = useNavigate();
 
   useEffect(() => {
     const interval = setInterval(() => {
-      setCurrentImage((prev) => (prev + 1) % images.length)
-    }, 5000)
-    return () => clearInterval(interval)
-  }, [])
+      setCurrentImage((prev) => (prev + 1) % images.length);
+    }, 5000);
+    return () => clearInterval(interval);
+  }, []);
 
-  const scrollToGallery = () => {
-    const galleryElement = document.getElementById('gallery')
-    if (galleryElement) {
-      galleryElement.scrollIntoView({ behavior: 'smooth' })
+  const handleButtonClick = () => {
+    if (user) {
+      // Navigate to dashboard if user is logged in
+      navigate(user.role === 'admin' ? '/admin-dashboard' : '/user-dashboard');
+    } else {
+      // Scroll to gallery for guests
+      const galleryElement = document.getElementById('gallery');
+      if (galleryElement) {
+        galleryElement.scrollIntoView({ behavior: 'smooth' });
+      }
     }
-  }
+  };
 
   return (
     <section className="relative h-screen flex items-center justify-center overflow-hidden">
@@ -122,10 +132,10 @@ const Hero = () => {
           initial={{ opacity: 0, y: 30 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ duration: 1, delay: 0.6 }}
-          onClick={scrollToGallery}
+          onClick={handleButtonClick}
           className="group bg-white text-black px-8 py-4 rounded-full font-semibold text-lg hover:bg-gray-200 transition-all duration-300 transform hover:scale-105"
         >
-          Explore Gallery
+          {user ? 'Go to Dashboard' : 'Explore Gallery'}
           <ArrowDown className="inline-block ml-2 group-hover:translate-y-1 transition-transform" size={20} />
         </motion.button>
       </div>
@@ -146,7 +156,7 @@ const Hero = () => {
         </motion.div>
       </motion.div>
     </section>
-  )
-}
+  );
+};
 
-export default Hero
+export default Hero;
