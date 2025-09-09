@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
 import { User, Lock, ShoppingCart, LogOut, Eye, Clock, CheckCircle, XCircle } from 'lucide-react'
-import { useAuth } from '../context/AuthContext'
-import { getUserPurchaseRequests, signOut } from '../utils/supabase'
+import { useAuth } from './src/context/AuthContext'
+import { getUserPurchaseRequests, signOut } from './src/utils/supabase'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
-import PinModal from './PinModal'
+import PinModal from './src/components/PinModal'
 
 const UserDashboard = () => {
   const { user, role } = useAuth()
@@ -109,39 +109,39 @@ const UserDashboard = () => {
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-6 mb-8 flex flex-col md:flex-row justify-between items-start md:items-center space-y-4 md:space-y-0"
+          className="bg-white rounded-lg shadow-sm p-6 mb-8 flex justify-between items-center"
         >
-          <div className="w-full md:w-auto">
-            <h1 className="text-2xl sm:text-3xl font-bold text-gray-900 break-words">
+          <div>
+            <h1 className="text-3xl font-bold text-gray-900">
               Welcome, {user?.user_metadata?.name || user?.email}
             </h1>
             <p className="text-gray-600 mt-1">Manage your account and access exclusive content</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center space-x-2 bg-red-600 text-white px-3 py-2 sm:px-4 sm:py-2 rounded-lg hover:bg-red-700 transition-colors"
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </button>
         </motion.div>
 
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6 md:gap-8">
+        <div className="grid lg:grid-cols-4 gap-8">
           {/* Sidebar */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="md:col-span-1"
+            className="lg:col-span-1"
           >
-            <div className="bg-white rounded-lg shadow-sm p-4 md:p-6 overflow-x-auto">
-              <nav className="space-y-2 md:space-y-3 flex md:flex-col md:overflow-visible">
+            <div className="bg-white rounded-lg shadow-sm p-6">
+              <nav className="space-y-2">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-3 px-3 py-2 sm:px-4 sm:py-3 rounded-lg text-left transition-colors w-max md:w-full ${
+                      className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors ${
                         activeTab === tab.id
                           ? 'bg-black text-white'
                           : 'text-gray-600 hover:bg-gray-100'
@@ -160,21 +160,21 @@ const UserDashboard = () => {
           <motion.div
             initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
-            className="md:col-span-3"
+            className="lg:col-span-3"
           >
-            <div className="bg-white rounded-lg shadow-sm p-4 sm:p-6 space-y-6">
+            <div className="bg-white rounded-lg shadow-sm p-6 space-y-6">
               {/* Profile Tab */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Profile Information</h2>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Name</label>
-                      <div className="p-3 bg-gray-50 rounded-lg break-words">{user?.user_metadata?.name || 'Not provided'}</div>
+                      <div className="p-3 bg-gray-50 rounded-lg">{user?.user_metadata?.name || 'Not provided'}</div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                      <div className="p-3 bg-gray-50 rounded-lg break-words">{user?.email}</div>
+                      <div className="p-3 bg-gray-50 rounded-lg">{user?.email}</div>
                     </div>
                     <div>
                       <label className="block text-sm font-medium text-gray-700 mb-2">Account Created</label>
@@ -191,9 +191,9 @@ const UserDashboard = () => {
               {/* Gallery Tab */}
               {activeTab === 'gallery' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Gallery Access</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 sm:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-3 sm:space-y-0 sm:space-x-3">
-                    <Eye className="w-6 h-6 text-blue-600 mt-1 sm:mt-0" />
+                  <h2 className="text-2xl font-bold text-gray-900">Gallery Access</h2>
+                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 flex items-start space-x-3">
+                    <Eye className="w-6 h-6 text-blue-600 mt-1" />
                     <div>
                       <h3 className="text-lg font-semibold text-blue-900">Access Protected Collections</h3>
                       <p className="text-blue-700 mt-2">
@@ -213,7 +213,7 @@ const UserDashboard = () => {
               {/* Purchases Tab */}
               {activeTab === 'purchases' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl sm:text-2xl font-bold text-gray-900">Purchase History</h2>
+                  <h2 className="text-2xl font-bold text-gray-900">Purchase History</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <motion.div
@@ -235,30 +235,32 @@ const UserDashboard = () => {
                           key={request.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-lg p-4 sm:p-6 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:justify-between sm:items-start"
+                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
                         >
-                          <div className="flex flex-col sm:flex-row sm:space-x-4 w-full">
-                            <img
-                              src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
-                              alt={request.images?.title}
-                              className="w-full sm:w-24 h-48 sm:h-18 object-cover rounded-lg"
-                            />
-                            <div className="flex-1 min-w-0 mt-4 sm:mt-0">
-                              <h3 className="text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
-                              <p className="text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
-                              <p className="text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
-                              {request.details?.size && (
-                                <p className="text-sm text-gray-600 mt-1">
-                                  Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
-                                </p>
-                              )}
+                          <div className="flex items-start justify-between">
+                            <div className="flex space-x-4">
+                              <img
+                                src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
+                                alt={request.images?.title}
+                                className="w-24 h-18 object-cover rounded-lg"
+                              />
+                              <div className="flex-1">
+                                <h3 className="text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
+                                <p className="text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
+                                <p className="text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
+                                {request.details?.size && (
+                                  <p className="text-sm text-gray-600 mt-1">
+                                    Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
+                                  </p>
+                                )}
+                              </div>
                             </div>
-                          </div>
-                          <div className="flex items-center space-x-2 mt-4 sm:mt-0">
-                            {getStatusIcon(request.status)}
-                            <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                            </span>
+                            <div className="flex items-center space-x-2">
+                              {getStatusIcon(request.status)}
+                              <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
+                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                              </span>
+                            </div>
                           </div>
                         </motion.div>
                       ))}
