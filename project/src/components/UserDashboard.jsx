@@ -8,8 +8,9 @@ import toast from 'react-hot-toast'
 import PinModal from './PinModal'
 
 const UserDashboard = () => {
-  const { user, role, refreshUser } = useAuth()
+  const { user, role } = useAuth()
   const navigate = useNavigate()
+
   const [activeTab, setActiveTab] = useState('profile')
   const [purchaseRequests, setPurchaseRequests] = useState([])
   const [loading, setLoading] = useState(false)
@@ -18,50 +19,35 @@ const UserDashboard = () => {
 
   // ------------------- SESSION & ROLE CHECK -------------------
   useEffect(() => {
-    const verifySession = async () => {
-      try {
-        await refreshUser()
-        if (!user) {
-          toast.error('Session expired. Redirecting to home.')
-          navigate('/')
-        } else if (role !== 'user') {
-          toast.error('Access denied.')
-          navigate(role === 'admin' ? '/admin-dashboard' : '/')
-        }
-      } catch (err) {
-        console.error('Session check error:', err)
-        toast.error('Session validation failed')
-        navigate('/')
-      } finally {
-        setCheckingSession(false)
-      }
+    if (!user) {
+      toast.error('Session expired. Redirecting to home.')
+      navigate('/')
+    } else if (role && role !== 'user') {
+      toast.error('Access denied.')
+      navigate(role === 'admin' ? '/admin-dashboard' : '/')
     }
-
-    verifySession()
-  }, [user, role, navigate, refreshUser])
+    setCheckingSession(false)
+  }, [user, role, navigate])
 
   // ------------------- FETCH PURCHASE REQUESTS -------------------
   useEffect(() => {
-    if (user && role === 'user') {
-      fetchPurchaseRequests()
+    const fetchPurchaseRequests = async () => {
+      if (!user || role !== 'user') return
+      setLoading(true)
+      try {
+        const { data, error } = await getUserPurchaseRequests(user.id)
+        if (error) throw error
+        setPurchaseRequests(data || [])
+      } catch (err) {
+        console.error('Error fetching purchase requests:', err)
+        toast.error('Failed to load purchase requests')
+      } finally {
+        setLoading(false)
+      }
     }
+
+    fetchPurchaseRequests()
   }, [user, role])
-
-  const fetchPurchaseRequests = async () => {
-    if (!user) return
-
-    setLoading(true)
-    try {
-      const { data, error } = await getUserPurchaseRequests(user.id)
-      if (error) throw error
-      setPurchaseRequests(data || [])
-    } catch (error) {
-      console.error('Error fetching purchase requests:', error)
-      toast.error('Failed to load purchase requests')
-    } finally {
-      setLoading(false)
-    }
-  }
 
   // ------------------- SIGN OUT -------------------
   const handleSignOut = async () => {
@@ -70,8 +56,8 @@ const UserDashboard = () => {
       if (error) throw error
       toast.success('Signed out successfully')
       navigate('/')
-    } catch (error) {
-      console.error('Sign out error:', error)
+    } catch (err) {
+      console.error('Sign out error:', err)
       toast.error('Failed to sign out')
     }
   }
