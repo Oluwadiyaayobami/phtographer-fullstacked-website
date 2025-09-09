@@ -9,16 +9,23 @@ import Dashboard from './pages/Dashboard';
 import AdminDashboard from './pages/AdminDashboard';
 import AuthForm from './components/AuthForm';
 
+// Loader component
+const Loader = ({ message = "Loading..." }) => (
+  <div className="flex justify-center items-center h-64 text-gray-700 font-semibold">
+    {message}
+  </div>
+);
+
 // Protected route wrapper
 const ProtectedRoute = ({ element, allowedRoles }) => {
   const { user, role, loading } = useAuth();
 
-  if (loading) return <div className="text-center p-6">Loading...</div>;
+  if (loading) return <Loader message="Checking session..." />;
 
   if (!user) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <Navigate to="/" replace />;
+    return <Navigate to={role === 'admin' ? '/admin-dashboard' : '/dashboard'} replace />;
   }
 
   return element;
@@ -28,7 +35,7 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
 const AuthRedirect = ({ children }) => {
   const { user, role, loading } = useAuth();
 
-  if (loading) return <div className="text-center p-6">Loading...</div>;
+  if (loading) return <Loader message="Checking session..." />;
 
   if (user) {
     return <Navigate to={role === 'admin' ? '/admin-dashboard' : '/dashboard'} replace />;
@@ -43,10 +50,13 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen">
           <Navbar />
+
           <main className="flex-1">
             <Routes>
-              {/* Public Routes */}
+              {/* Public Route */}
               <Route path="/" element={<Home />} />
+
+              {/* Authentication Routes */}
               <Route
                 path="/login"
                 element={
@@ -74,11 +84,13 @@ function App() {
                 element={<ProtectedRoute element={<AdminDashboard />} allowedRoles={['admin']} />}
               />
 
-              {/* Fallback */}
+              {/* Catch-all fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
+
           <Footer />
+
           <Toaster
             position="top-right"
             toastOptions={{

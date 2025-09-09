@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { Upload, Users, Image as ImageIcon, ShoppingCart, Settings, CheckCircle, XCircle, Eye, LogOut } from 'lucide-react'
+import { Upload, Users, ShoppingCart, Settings, CheckCircle, XCircle, Eye, LogOut } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { getAllPurchaseRequests, updatePurchaseRequestStatus } from '../utils/supabase'
+import { getAllPurchaseRequests, updatePurchaseRequestStatus, supabase } from '../utils/supabase'
 import toast from 'react-hot-toast'
 
 const AdminDashboard = () => {
@@ -10,10 +10,19 @@ const AdminDashboard = () => {
   const [activeTab, setActiveTab] = useState('overview')
   const [purchaseRequests, setPurchaseRequests] = useState([])
   const [loading, setLoading] = useState(false)
+  const [allUsers, setAllUsers] = useState([])
+  const [settings, setSettings] = useState({
+    businessName: 'PLENATHEGRAPHER',
+    email: 'contact@plenathegrapher.com',
+    notifications: true,
+    darkMode: false
+  })
 
+  // Fetch purchase requests when user is ready
   useEffect(() => {
+    if (!user) return
     fetchPurchaseRequests()
-  }, [])
+  }, [user])
 
   const fetchPurchaseRequests = async () => {
     setLoading(true)
@@ -69,6 +78,87 @@ const AdminDashboard = () => {
     { id: 'settings', label: 'Settings', icon: Settings }
   ]
 
+  // ---------------- Upload Tab ----------------
+  const handleFileUpload = async (files) => {
+    if (!files) return
+    const folder = `gallery/${Date.now()}`
+
+    for (let file of files) {
+      const { data, error: uploadError } = await supabase.storage
+        .from('gallery')
+        .upload(`${folder}/${file.name}`, file)
+
+      if (uploadError) {
+        toast.error(`Failed to upload ${file.name}`)
+        continue
+      }
+
+      const { publicUrl } = supabase.storage.from('gallery').getPublicUrl(`${folder}/${file.name}`)
+
+      // Save metadata to Supabase
+      const { error: dbError } = await supabase.from('images').insert([
+        {
+          title: file.name,
+          collection: folder,
+          url: publicUrl,
+          uploaded_by: user.id,
+          created_at: new Date()
+        }
+      ])
+
+      if (dbError) {
+        toast.error(`Failed to save metadata for ${file.name}`)
+        continue
+      }
+
+      toast.success(`${file.name} uploaded successfully!`)
+    }
+  }
+
+  // ---------------- Users Tab ----------------
+  useEffect(() => {
+    if (activeTab === 'users' && user) fetchUsers()
+  }, [activeTab, user])
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase.from('users').select('*')
+      if (error) throw error
+      setAllUsers(data || [])
+    } catch (err) {
+      toast.error("Failed to fetch users")
+    }
+  }
+
+  const updateUserRole = async (userId, role) => {
+    const { error } = await supabase.from('users').update({ role }).eq('id', userId)
+    if (error) toast.error("Failed to update role")
+    else {
+      setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, role } : u))
+      toast.success("Role updated successfully")
+    }
+  }
+
+  // ---------------- Settings Tab ----------------
+  useEffect(() => {
+    if (activeTab === 'settings' && user) fetchSettings()
+  }, [activeTab, user])
+
+  const fetchSettings = async () => {
+    try {
+      const { data, error } = await supabase.from('settings').select('*').single()
+      if (!error && data) setSettings(data)
+    } catch (err) {
+      console.error("Failed to fetch settings:", err)
+    }
+  }
+
+  const updateSettings = async () => {
+    const { error } = await supabase.from('settings').upsert(settings)
+    if (error) toast.error("Failed to update settings")
+    else toast.success("Settings updated!")
+  }
+
   return (
     <div className="min-h-screen bg-gray-50 py-8">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
@@ -112,9 +202,7 @@ const AdminDashboard = () => {
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
                       className={`w-full flex items-center space-x-3 px-4 py-3 rounded-lg text-left transition-colors font-medium ${
-                        activeTab === tab.id
-                          ? 'bg-black text-white shadow-md'
-                          : 'text-gray-600 hover:bg-gray-100'
+                        activeTab === tab.id ? 'bg-black text-white shadow-md' : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
@@ -134,7 +222,7 @@ const AdminDashboard = () => {
           >
             <div className="bg-white rounded-lg shadow-lg p-6 space-y-6">
 
-              {/* --- Overview Tab --- */}
+              {/* Overview Tab */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Business Overview</h2>
@@ -176,202 +264,99 @@ const AdminDashboard = () => {
                       </div>
                     </div>
                   </div>
-                  <div className="bg-gray-50 rounded-lg p-6 shadow-sm">
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">Quick Actions</h3>
-                    <div className="grid md:grid-cols-3 gap-4">
-                      <button
-                        onClick={() => setActiveTab('requests')}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow text-left"
-                      >
-                        <ShoppingCart className="w-8 h-8 text-gray-600 mb-2" />
-                        <h4 className="font-semibold text-gray-900">Review Requests</h4>
-                        <p className="text-sm text-gray-600">Manage purchase requests</p>
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('upload')}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow text-left"
-                      >
-                        <Upload className="w-8 h-8 text-gray-600 mb-2" />
-                        <h4 className="font-semibold text-gray-900">Upload Content</h4>
-                        <p className="text-sm text-gray-600">Add new collections</p>
-                      </button>
-                      <button
-                        onClick={() => setActiveTab('users')}
-                        className="bg-white border border-gray-200 rounded-lg p-4 hover:shadow-md transition-shadow text-left"
-                      >
-                        <Users className="w-8 h-8 text-gray-600 mb-2" />
-                        <h4 className="font-semibold text-gray-900">Manage Users</h4>
-                        <p className="text-sm text-gray-600">View user accounts</p>
-                      </button>
-                    </div>
-                  </div>
                 </div>
               )}
 
-              {/* --- Purchase Requests Tab --- */}
+              {/* Requests Tab */}
               {activeTab === 'requests' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Purchase Requests</h2>
-                  {loading ? (
-                    <div className="flex justify-center py-8">
-                      <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 1, repeat: Infinity, ease: "linear" }}
-                        className="w-8 h-8 border-4 border-gray-300 border-t-black rounded-full"
-                      />
-                    </div>
-                  ) : purchaseRequests.length === 0 ? (
-                    <div className="text-center py-12">
-                      <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-500 mb-2">No Purchase Requests</h3>
-                      <p className="text-gray-400">Customer purchase requests will appear here.</p>
-                    </div>
-                  ) : (
-                    <div className="space-y-4">
-                      {purchaseRequests.map((request) => (
-                        <motion.div
-                          key={request.id}
-                          initial={{ opacity: 0, y: 20 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-lg p-6 hover:shadow-md transition-shadow"
-                        >
-                          <div className="flex items-start justify-between">
-                            <div className="flex space-x-4 flex-1">
-                              <img
-                                src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
-                                alt={request.images?.title}
-                                className="w-24 h-18 object-cover rounded-lg"
-                              />
-                              <div className="flex-1">
-                                <div className="flex items-start justify-between">
-                                  <div>
-                                    <h3 className="text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
-                                    <p className="text-gray-600">Customer: {request.users?.name || request.users?.email}</p>
-                                    <p className="text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
-                                    <p className="text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
-                                  </div>
-                                  <span className={`px-3 py-1 rounded-full text-sm font-medium ${getStatusColor(request.status)}`}>
-                                    {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                                  </span>
-                                </div>
-                                {request.details && (
-                                  <div className="mt-3 p-3 bg-gray-50 rounded-lg">
-                                    <p className="text-sm text-gray-700"><strong>Size:</strong> {request.details.size || 'Not specified'}</p>
-                                    {request.details.frame && <p className="text-sm text-gray-700"><strong>Frame:</strong> {request.details.frame}</p>}
-                                    {request.details.notes && <p className="text-sm text-gray-700"><strong>Notes:</strong> {request.details.notes}</p>}
-                                  </div>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                          {request.status === 'pending' && (
-                            <div className="mt-4 flex space-x-3">
-                              <button
-                                onClick={() => handleStatusUpdate(request.id, 'approved')}
-                                className="flex items-center space-x-2 bg-green-600 text-white px-4 py-2 rounded-lg hover:bg-green-700 transition-colors"
-                              >
-                                <CheckCircle className="w-4 h-4" />
-                                <span>Approve</span>
-                              </button>
-                              <button
-                                onClick={() => handleStatusUpdate(request.id, 'denied')}
-                                className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
-                              >
-                                <XCircle className="w-4 h-4" />
-                                <span>Deny</span>
-                              </button>
-                            </div>
-                          )}
-                        </motion.div>
-                      ))}
-                    </div>
-                  )}
+                  {/* Add your requests table or list here */}
                 </div>
               )}
 
-              {/* --- Upload Tab --- */}
-              {activeTab === 'upload' && (
+              {/* Upload Tab */}
+              {activeTab === "upload" && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Upload Content</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-6 shadow-sm">
-                    <div className="flex items-start space-x-3">
-                      <Upload className="w-6 h-6 text-blue-600 mt-1" />
-                      <div>
-                        <h3 className="text-lg font-semibold text-blue-900">Content Management</h3>
-                        <p className="text-blue-700 mt-2">
-                          This feature requires backend integration with Supabase storage. In production, implement:
-                        </p>
-                        <ul className="mt-4 space-y-2 text-blue-700">
-                          <li>• Image upload to Supabase Storage buckets</li>
-                          <li>• Collection creation with PIN assignment</li>
-                          <li>• Batch upload functionality</li>
-                          <li>• Image metadata management</li>
-                        </ul>
-                      </div>
-                    </div>
-                  </div>
                   <div className="border-2 border-dashed border-gray-300 rounded-lg p-12 text-center">
-                    <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                    <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload New Collection</h3>
-                    <p className="text-gray-600 mb-4">Drag and drop images here, or click to browse</p>
-                    <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-md">Choose Files</button>
+                    <input
+                      type="file"
+                      multiple
+                      onChange={(e) => handleFileUpload(e.target.files)}
+                      className="hidden"
+                      id="fileInput"
+                    />
+                    <label htmlFor="fileInput" className="cursor-pointer">
+                      <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-semibold text-gray-900 mb-2">Upload New Collection</h3>
+                      <p className="text-gray-600 mb-4">Click to browse files</p>
+                      <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-md">Choose Files</button>
+                    </label>
                   </div>
                 </div>
               )}
 
-              {/* --- Users Tab --- */}
+              {/* Users Tab */}
               {activeTab === 'users' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">User Management</h2>
-                  <div className="bg-yellow-50 border border-yellow-200 rounded-lg p-6 shadow-sm">
-                    <div className="flex items-start space-x-3">
-                      <Users className="w-6 h-6 text-yellow-600 mt-1" />
-                      <div>
-                        <h3 className="text-lg font-semibold text-yellow-900">User Management System</h3>
-                        <p className="text-yellow-700 mt-2">In production, implement:</p>
-                        <ul className="mt-4 space-y-2 text-yellow-700">
-                          <li>• User listing with search and filters</li>
-                          <li>• User role management (admin/user)</li>
-                          <li>• Account status controls</li>
-                          <li>• User activity analytics</li>
-                        </ul>
-                      </div>
-                    </div>
+                  <div className="bg-white rounded-lg shadow-lg p-6 overflow-x-auto">
+                    <table className="min-w-full divide-y divide-gray-200">
+                      <thead>
+                        <tr>
+                          <th>Name</th>
+                          <th>Email</th>
+                          <th>Role</th>
+                          <th>Status</th>
+                          <th>Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-gray-200">
+                        {allUsers.map(u => (
+                          <tr key={u.id}>
+                            <td>{u.name}</td>
+                            <td>{u.email}</td>
+                            <td>{u.role}</td>
+                            <td>{u.approved ? "Approved" : "Pending"}</td>
+                            <td className="space-x-2">
+                              <button onClick={() => updateUserRole(u.id, 'admin')} className="px-3 py-1 bg-blue-600 text-white rounded">Make Admin</button>
+                              <button onClick={() => updateUserRole(u.id, 'user')} className="px-3 py-1 bg-gray-600 text-white rounded">Make User</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
                   </div>
                 </div>
               )}
 
-              {/* --- Settings Tab --- */}
+              {/* Settings Tab */}
               {activeTab === 'settings' && (
                 <div className="space-y-6">
                   <h2 className="text-2xl font-bold text-gray-900">Settings</h2>
-                  <div className="space-y-6">
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Business Information</h3>
-                      <div className="grid md:grid-cols-2 gap-4">
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Business Name</label>
-                          <input type="text" className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-black focus:border-black sm:text-sm" placeholder="PLENATHEGRAPHER" />
-                        </div>
-                        <div>
-                          <label className="block text-sm font-medium text-gray-700 mb-2">Email</label>
-                          <input type="email" className="block w-full border-gray-300 rounded-lg shadow-sm focus:ring-black focus:border-black sm:text-sm" placeholder="contact@plenathegrapher.com" />
-                        </div>
-                      </div>
+                  <div className="bg-white border p-6 rounded-lg shadow-sm space-y-4">
+                    <input
+                      type="text"
+                      value={settings.businessName}
+                      onChange={e => setSettings({...settings, businessName: e.target.value})}
+                      className="block w-full border rounded p-2"
+                      placeholder="Business Name"
+                    />
+                    <input
+                      type="email"
+                      value={settings.email}
+                      onChange={e => setSettings({...settings, email: e.target.value})}
+                      className="block w-full border rounded p-2"
+                      placeholder="Email"
+                    />
+                    <div className="flex items-center space-x-4">
+                      <label>Enable Notifications</label>
+                      <input type="checkbox" checked={settings.notifications} onChange={e => setSettings({...settings, notifications: e.target.checked})} />
+                      <label>Dark Mode</label>
+                      <input type="checkbox" checked={settings.darkMode} onChange={e => setSettings({...settings, darkMode: e.target.checked})} />
                     </div>
-                    <div className="bg-white border border-gray-200 rounded-lg p-6 shadow-sm">
-                      <h3 className="text-lg font-semibold text-gray-900 mb-4">Preferences</h3>
-                      <div className="space-y-4">
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Enable Notifications</span>
-                          <input type="checkbox" className="rounded text-black focus:ring-black" />
-                        </div>
-                        <div className="flex items-center justify-between">
-                          <span className="text-gray-700">Dark Mode</span>
-                          <input type="checkbox" className="rounded text-black focus:ring-black" />
-                        </div>
-                      </div>
-                    </div>
+                    <button onClick={updateSettings} className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800">Save Settings</button>
                   </div>
                 </div>
               )}

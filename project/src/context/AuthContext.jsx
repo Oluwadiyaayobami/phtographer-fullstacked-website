@@ -10,11 +10,11 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null);
-  const [role, setRole] = useState(null);
+  const [user, setUser] = useState(null); // Supabase user object
+  const [role, setRole] = useState(null); // user role: 'admin' | 'user'
   const [loading, setLoading] = useState(true);
 
-  // Fetch role from Supabase
+  // Fetch role from Supabase users table
   const fetchUserRole = async (userId) => {
     try {
       const { data, error } = await supabase
@@ -22,7 +22,6 @@ export const AuthProvider = ({ children }) => {
         .select("role")
         .eq("id", userId)
         .maybeSingle();
-
       if (error) throw error;
       return data?.role || "user";
     } catch (err) {
@@ -41,6 +40,7 @@ export const AuthProvider = ({ children }) => {
       setUser(null);
       setRole(null);
     }
+    setLoading(false); // ensure loading ends after handling session
   };
 
   // Initialize auth on load
@@ -52,20 +52,20 @@ export const AuthProvider = ({ children }) => {
         await handleSession(session);
       } catch (err) {
         console.error("Auth init error:", err);
-      } finally {
         setLoading(false);
       }
     };
 
     init();
 
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+    // Listen for auth state changes (login/logout)
+    const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
         await handleSession(session);
       }
     );
 
-    return () => subscription.unsubscribe();
+    return () => listener.subscription.unsubscribe();
   }, []);
 
   // Login function
@@ -75,6 +75,7 @@ export const AuthProvider = ({ children }) => {
       const { data, error } = await supabase.auth.signInWithPassword({ email, password });
       if (error) throw error;
       await handleSession(data.user ? { user: data.user } : null);
+      return data.user;
     } catch (err) {
       console.error("Login error:", err);
       throw err;
@@ -91,8 +92,10 @@ export const AuthProvider = ({ children }) => {
       if (error) throw error;
 
       if (data.user) {
-        await supabase.from("users").insert([{ id: data.user.id, ...additionalData }]);
+        // Insert user with role and any additional fields
+        await supabase.from("users").insert([{ id: data.user.id, email, ...additionalData }]);
         await handleSession({ user: data.user });
+        return data.user;
       }
     } catch (err) {
       console.error("Signup error:", err);
@@ -104,6 +107,7 @@ export const AuthProvider = ({ children }) => {
 
   // Logout function
   const logout = async () => {
+    setLoading(true);
     try {
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
@@ -111,6 +115,8 @@ export const AuthProvider = ({ children }) => {
       setRole(null);
     } catch (err) {
       console.error("Logout failed:", err);
+    } finally {
+      setLoading(false);
     }
   };
 

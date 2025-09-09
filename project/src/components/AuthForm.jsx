@@ -3,14 +3,16 @@ import { motion } from "framer-motion";
 import { Eye, EyeOff, Camera } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import toast from "react-hot-toast";
-import { supabase } from "../utils/supabase";
+import { useAuth } from "../context/AuthContext";
 
 const AuthForm = ({ mode }) => {
+  const { login, signup, role } = useAuth();
   const [formData, setFormData] = useState({
     name: "",
     email: "",
     password: "",
     confirmPassword: "",
+    role: "user", // default role on signup
   });
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
@@ -32,32 +34,28 @@ const AuthForm = ({ mode }) => {
           return;
         }
 
-        // Sign up user
-        const { data, error } = await supabase.auth.signUp({
-          email: formData.email,
-          password: formData.password,
-          options: { data: { name: formData.name } },
+        // Signup via AuthContext
+        await signup(formData.email, formData.password, {
+          name: formData.name,
+          role: formData.role,
         });
-        if (error) throw error;
-
-        // Insert into 'users' table
-        const { error: insertError } = await supabase
-          .from("users")
-          .insert([{ id: data.user.id, email: data.user.email, name: formData.name, role: "user" }]);
-        if (insertError) throw insertError;
 
         toast.success("Account created successfully!");
-        navigate("/login");
+        navigate("/login"); // after signup go to login
       } else {
-        // Sign in
-        const { error: signInError } = await supabase.auth.signInWithPassword({
-          email: formData.email,
-          password: formData.password,
-        });
-        if (signInError) throw signInError;
+        // Login via AuthContext
+        await login(formData.email, formData.password);
 
         toast.success("Signed in successfully!");
-        // Redirect handled automatically in AuthContext
+
+        // Redirect based on role from context
+        if (role === "admin") {
+          navigate("/admin-dashboard");
+        } else if (role === "user") {
+          navigate("/user-dashboard");
+        } else {
+          toast.error("Role not recognized");
+        }
       }
     } catch (error) {
       console.error("Auth error:", error);
@@ -98,20 +96,53 @@ const AuthForm = ({ mode }) => {
           onSubmit={handleSubmit}
         >
           {mode === "signup" && (
-            <div>
-              <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
-                Full Name *
-              </label>
-              <input
-                type="text"
-                id="name"
-                name="name"
-                value={formData.name}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                required
-              />
-            </div>
+            <>
+              <div>
+                <label htmlFor="name" className="block text-sm font-medium text-gray-700 mb-2">
+                  Full Name *
+                </label>
+                <input
+                  type="text"
+                  id="name"
+                  name="name"
+                  value={formData.name}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
+
+              <div>
+                <label htmlFor="role" className="block text-sm font-medium text-gray-700 mb-2">
+                  Role *
+                </label>
+                <select
+                  id="role"
+                  name="role"
+                  value={formData.role}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                >
+                  <option value="user">User</option>
+                  <option value="admin">Admin</option>
+                </select>
+              </div>
+
+              <div>
+                <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
+                  Confirm Password *
+                </label>
+                <input
+                  type="password"
+                  id="confirmPassword"
+                  name="confirmPassword"
+                  value={formData.confirmPassword}
+                  onChange={handleChange}
+                  className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
+                  required
+                />
+              </div>
+            </>
           )}
 
           <div>
@@ -152,23 +183,6 @@ const AuthForm = ({ mode }) => {
               </button>
             </div>
           </div>
-
-          {mode === "signup" && (
-            <div>
-              <label htmlFor="confirmPassword" className="block text-sm font-medium text-gray-700 mb-2">
-                Confirm Password *
-              </label>
-              <input
-                type="password"
-                id="confirmPassword"
-                name="confirmPassword"
-                value={formData.confirmPassword}
-                onChange={handleChange}
-                className="w-full px-4 py-3 border border-gray-300 rounded-lg focus:ring-2 focus:ring-black focus:border-transparent transition-colors"
-                required
-              />
-            </div>
-          )}
 
           <button
             type="submit"
