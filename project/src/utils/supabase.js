@@ -7,8 +7,8 @@ const supabaseKey = import.meta.env.VITE_SUPABASE_ANON_KEY;
 export const supabase = createClient(supabaseUrl, supabaseKey, {
   auth: {
     persistSession: true, // Persist session (localStorage)
-    detectSessionInUrl: true
-  }
+    detectSessionInUrl: true,
+  },
 });
 
 //
@@ -21,8 +21,8 @@ export const signUp = async ({ email, password, name, role = "user" }) => {
     email,
     password,
     options: {
-      data: { name, role }
-    }
+      data: { name, role },
+    },
   });
   return { user: data?.user, session: data?.session, error };
 };
@@ -31,7 +31,7 @@ export const signUp = async ({ email, password, name, role = "user" }) => {
 export const signIn = async ({ email, password }) => {
   const { data, error } = await supabase.auth.signInWithPassword({
     email,
-    password
+    password,
   });
   return { user: data?.user, session: data?.session, error };
 };
@@ -44,12 +44,13 @@ export const signOut = async () => {
 
 // Get current logged-in user with role
 export const getCurrentUser = async () => {
-  const { data: { session }, error } = await supabase.auth.getSession();
+  const {
+    data: { session },
+  } = await supabase.auth.getSession();
   const user = session?.user || null;
   return {
     user,
     role: user?.user_metadata?.role || null,
-    error
   };
 };
 
@@ -68,10 +69,36 @@ export const getCollections = async () => {
 export const getCollectionImages = async (collectionId) => {
   const { data, error } = await supabase
     .from("images")
-    .select("*")
+    .select("id, title, image_url, collection_id, created_at")
     .eq("collection_id", collectionId)
     .order("created_at", { ascending: false });
-  return { data, error };
+
+  if (error) return { data: null, error };
+
+  const normalized = data.map((img) => ({
+    ...img,
+    url: img.image_url, // normalize for frontend
+  }));
+
+  return { data: normalized, error: null };
+};
+
+// Fetch preview images for public gallery (limit 15)
+export const getPublicGalleryImages = async () => {
+  const { data, error } = await supabase
+    .from("images")
+    .select("id, title, image_url, collection_id, created_at")
+    .order("created_at", { ascending: false })
+    .limit(15);
+
+  if (error) return { data: null, error };
+
+  const normalized = data.map((img) => ({
+    ...img,
+    url: img.image_url, // normalize
+  }));
+
+  return { data: normalized, error: null };
 };
 
 export const verifyCollectionPin = async (collectionId, pin) => {
@@ -101,13 +128,24 @@ export const createPurchaseRequest = async (userId, imageId, details) => {
 export const getUserPurchaseRequests = async (userId) => {
   const { data, error } = await supabase
     .from("purchase_requests")
-    .select(`
+    .select(
+      `
       *,
-      images (title, image_url, collections (title))
-    `)
+      images (id, title, image_url, collections (title))
+    `
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
-  return { data, error };
+
+  if (error) return { data: null, error };
+
+  // normalize
+  const normalized = data.map((req) => ({
+    ...req,
+    images: req.images ? { ...req.images, url: req.images.image_url } : null,
+  }));
+
+  return { data: normalized, error: null };
 };
 
 //
@@ -139,13 +177,23 @@ export const isAdmin = async (userId) => {
 export const getAllPurchaseRequests = async () => {
   const { data, error } = await supabase
     .from("purchase_requests")
-    .select(`
+    .select(
+      `
       *,
       users (name, email),
-      images (title, image_url, collections (title))
-    `)
+      images (id, title, image_url, collections (title))
+    `
+    )
     .order("created_at", { ascending: false });
-  return { data, error };
+
+  if (error) return { data: null, error };
+
+  const normalized = data.map((req) => ({
+    ...req,
+    images: req.images ? { ...req.images, url: req.images.image_url } : null,
+  }));
+
+  return { data: normalized, error: null };
 };
 
 // Update request status
@@ -161,14 +209,56 @@ export const updatePurchaseRequestStatus = async (requestId, status) => {
 // ---------------- STORAGE ----------------
 //
 
-// Upload file to Supabase storage
-export const uploadFile = async (file, folder = "gallery") => {
+// Simple upload (returns URL only)
+export const uploadFile = async (file, folder = "uploads") => {
   const filePath = `${folder}/${Date.now()}-${file.name}`;
-  const { data, error } = await supabase.storage.from("gallery").upload(filePath, file);
+  const { error } = await supabase.storage
+    .from("images")
+    .upload(filePath, file);
+
   if (error) throw error;
 
-  const { data: urlData } = supabase.storage.from("gallery").getPublicUrl(filePath);
-  return urlData.publicUrl;
+  const { data: urlData } = supabase.storage
+    .from("images")
+    .getPublicUrl(filePath);
+
+  return urlData.publicUrl; // Save into images.image_url column if needed
+};
+
+// Upload + Save metadata into `images` table
+export const saveImageMetadata = async (title, collectionId, uploadedBy, file) => {
+  try {
+    // 1. Upload file
+    const filePath = `uploads/${Date.now()}-${file.name}`;
+    const { error: uploadError } = await supabase.storage
+      .from("images")
+      .upload(filePath, file);
+
+    if (uploadError) throw uploadError;
+
+    // 2. Get public URL
+    const { data: urlData } = supabase.storage
+      .from("images")
+      .getPublicUrl(filePath);
+
+    // 3. Insert metadata into `images` table
+    const { data, error } = await supabase
+      .from("images")
+      .insert([
+        {
+          title,
+          collection_id: collectionId,
+          uploaded_by: uploadedBy,
+          image_url: urlData.publicUrl,
+        },
+      ])
+      .select();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
 };
 
 // Create signed URL for file access

@@ -7,7 +7,7 @@ import { useAuth } from '../context/AuthContext'
 const Navbar = () => {
   const [isOpen, setIsOpen] = useState(false)
   const location = useLocation()
-  const { user } = useAuth()
+  const { user, role } = useAuth()
 
   const navItems = [
     { name: 'Home', path: '/' },
@@ -17,25 +17,22 @@ const Navbar = () => {
   ]
 
   const isActive = (path) => {
-    if (path.startsWith('#')) {
-      return false
-    }
+    if (path.startsWith('#')) return false
     return location.pathname === path
   }
 
   const scrollToSection = (sectionId) => {
     const element = document.getElementById(sectionId)
-    if (element) {
-      element.scrollIntoView({ behavior: 'smooth' })
-    }
+    if (element) element.scrollIntoView({ behavior: 'smooth' })
   }
 
   const handleNavClick = (path) => {
     setIsOpen(false)
-    if (path.startsWith('#')) {
-      scrollToSection(path.substring(1))
-    }
+    if (path.startsWith('#')) scrollToSection(path.substring(1))
   }
+
+  // Determine dashboard route
+  const dashboardPath = role === 'admin' ? '/admin-dashboard' : '/user-dashboard'
 
   return (
     <nav className="fixed top-0 left-0 right-0 z-50 bg-black/90 backdrop-blur-md border-b border-white/10">
@@ -50,41 +47,39 @@ const Navbar = () => {
           </Link>
 
           {/* Desktop Menu */}
-          <div className="hidden md:block">
-            <div className="ml-10 flex items-center space-x-8">
-              {navItems.map((item) => (
-                <Link
-                  key={item.name}
-                  to={item.path}
-                  onClick={() => handleNavClick(item.path)}
-                  className={`relative text-white hover:text-gray-300 transition-colors group ${
-                    isActive(item.path) ? 'text-gray-300' : ''
-                  }`}
-                >
-                  {item.name}
-                  <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
-                </Link>
-              ))}
-              
-              {user ? (
-                <Link
-                  to="/dashboard"
-                  className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Dashboard
-                </Link>
-              ) : (
-                <Link
-                  to="/login"
-                  className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
-                >
-                  Sign In
-                </Link>
-              )}
-            </div>
+          <div className="hidden md:flex items-center space-x-8">
+            {navItems.map((item) => (
+              <Link
+                key={item.name}
+                to={item.path}
+                onClick={() => handleNavClick(item.path)}
+                className={`relative text-white hover:text-gray-300 transition-colors ${
+                  isActive(item.path) ? 'text-gray-300' : ''
+                }`}
+              >
+                {item.name}
+                <span className="absolute -bottom-1 left-0 w-0 h-0.5 bg-white group-hover:w-full transition-all duration-300"></span>
+              </Link>
+            ))}
+
+            {user ? (
+              <Link
+                to={dashboardPath}
+                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Dashboard
+              </Link>
+            ) : (
+              <Link
+                to="/login"
+                className="bg-white text-black px-4 py-2 rounded-md hover:bg-gray-200 transition-colors"
+              >
+                Sign In
+              </Link>
+            )}
           </div>
 
-          {/* Mobile menu button */}
+          {/* Mobile Menu Button */}
           <div className="md:hidden">
             <button
               onClick={() => setIsOpen(!isOpen)}
@@ -116,10 +111,10 @@ const Navbar = () => {
                   {item.name}
                 </Link>
               ))}
-              
+
               {user ? (
                 <Link
-                  to="/dashboard"
+                  to={dashboardPath}
                   className="block px-3 py-2 bg-white text-black rounded-md mx-3 text-center hover:bg-gray-200 transition-colors"
                   onClick={() => setIsOpen(false)}
                 >
