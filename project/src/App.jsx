@@ -18,7 +18,7 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
   if (!user) return <Navigate to="/login" replace />;
 
   if (allowedRoles && !allowedRoles.includes(role)) {
-    return <div className="text-center p-6">Unauthorized 🚫</div>;
+    return <Navigate to="/" replace />;
   }
 
   return element;
@@ -28,7 +28,7 @@ const ProtectedRoute = ({ element, allowedRoles }) => {
 const AuthRedirect = ({ children }) => {
   const { user, role, loading } = useAuth();
 
-  if (loading) return null;
+  if (loading) return <div className="text-center p-6">Loading...</div>;
 
   if (user) {
     return <Navigate to={role === 'admin' ? '/admin-dashboard' : '/dashboard'} replace />;
@@ -43,7 +43,6 @@ function App() {
       <AuthProvider>
         <div className="flex flex-col min-h-screen">
           <Navbar />
-
           <main className="flex-1">
             <Routes>
               {/* Public Routes */}
@@ -75,13 +74,11 @@ function App() {
                 element={<ProtectedRoute element={<AdminDashboard />} allowedRoles={['admin']} />}
               />
 
-              {/* Fallback route */}
+              {/* Fallback */}
               <Route path="*" element={<Navigate to="/" replace />} />
             </Routes>
           </main>
-
           <Footer />
-
           <Toaster
             position="top-right"
             toastOptions={{

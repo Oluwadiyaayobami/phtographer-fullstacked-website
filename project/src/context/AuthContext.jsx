@@ -1,6 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from "react";
 import { supabase } from "../utils/supabase";
-import { useNavigate } from "react-router-dom";
 
 const AuthContext = createContext();
 
@@ -14,50 +13,48 @@ export const AuthProvider = ({ children }) => {
   const [user, setUser] = useState(null);
   const [role, setRole] = useState(null);
   const [loading, setLoading] = useState(true);
-  const navigate = useNavigate();
 
-  // Fetch role from the database
+  // Fetch role from Supabase
   const fetchUserRole = async (userId) => {
-    const { data, error } = await supabase
-      .from("users")
-      .select("role")
-      .eq("id", userId)
-      .maybeSingle();
+    try {
+      const { data, error } = await supabase
+        .from("users")
+        .select("role")
+        .eq("id", userId)
+        .maybeSingle();
 
-    if (error) {
-      console.error("Error fetching user role:", error);
+      if (error) throw error;
+      return data?.role || "user";
+    } catch (err) {
+      console.error("Error fetching user role:", err);
       return "user";
     }
-
-    return data?.role || "user";
   };
 
-  // Handle session and role updates
+  // Handle session updates
   const handleSession = async (session) => {
     if (session?.user) {
       setUser(session.user);
       const dbRole = await fetchUserRole(session.user.id);
       setRole(dbRole);
-
-      // Redirect based on role
-      if (dbRole === "admin") navigate("/admin-dashboard");
-      else navigate("/user-dashboard");
     } else {
       setUser(null);
       setRole(null);
-      navigate("/login");
     }
   };
 
-  // Initial load
+  // Initialize auth on load
   useEffect(() => {
     const init = async () => {
       setLoading(true);
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (error) console.error("Error getting session:", error);
-
-      await handleSession(session);
-      setLoading(false);
+      try {
+        const { data: { session } } = await supabase.auth.getSession();
+        await handleSession(session);
+      } catch (err) {
+        console.error("Auth init error:", err);
+      } finally {
+        setLoading(false);
+      }
     };
 
     init();
@@ -68,29 +65,57 @@ export const AuthProvider = ({ children }) => {
       }
     );
 
-    // Auto-logout on browser close
-    const handleUnload = async () => {
-      await supabase.auth.signOut();
-    };
-    window.addEventListener("beforeunload", handleUnload);
-
-    return () => {
-      subscription.unsubscribe();
-      window.removeEventListener("beforeunload", handleUnload);
-    };
+    return () => subscription.unsubscribe();
   }, []);
+
+  // Login function
+  const login = async (email, password) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({ email, password });
+      if (error) throw error;
+      await handleSession(data.user ? { user: data.user } : null);
+    } catch (err) {
+      console.error("Login error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  // Signup function
+  const signup = async (email, password, additionalData = {}) => {
+    setLoading(true);
+    try {
+      const { data, error } = await supabase.auth.signUp({ email, password });
+      if (error) throw error;
+
+      if (data.user) {
+        await supabase.from("users").insert([{ id: data.user.id, ...additionalData }]);
+        await handleSession({ user: data.user });
+      }
+    } catch (err) {
+      console.error("Signup error:", err);
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // Logout function
   const logout = async () => {
-    const { error } = await supabase.auth.signOut();
-    if (error) console.error("Logout error:", error);
-    setUser(null);
-    setRole(null);
-    navigate("/login");
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      setUser(null);
+      setRole(null);
+    } catch (err) {
+      console.error("Logout failed:", err);
+    }
   };
 
   return (
-    <AuthContext.Provider value={{ user, role, loading, logout }}>
+    <AuthContext.Provider value={{ user, role, loading, login, signup, logout }}>
       {children}
     </AuthContext.Provider>
   );
