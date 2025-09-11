@@ -1,8 +1,16 @@
 import React, { useState, useEffect } from 'react'
 import { motion } from 'framer-motion'
-import { User, Lock, ShoppingCart, LogOut, Eye, Clock, CheckCircle, XCircle } from 'lucide-react'
+import {
+  User, ShoppingCart, LogOut,
+  Eye, Clock, CheckCircle, XCircle, Download
+} from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
-import { getUserPurchaseRequests, signOut } from '../utils/supabase'
+import {
+  getUserPurchaseRequests,
+  signOut,
+  getAllImages,
+  createPurchaseRequest
+} from '../utils/supabase'
 import { useNavigate } from 'react-router-dom'
 import toast from 'react-hot-toast'
 import PinModal from './PinModal'
@@ -13,6 +21,7 @@ const UserDashboard = () => {
 
   const [activeTab, setActiveTab] = useState('profile')
   const [purchaseRequests, setPurchaseRequests] = useState([])
+  const [galleryImages, setGalleryImages] = useState([])
   const [loading, setLoading] = useState(false)
   const [showPinModal, setShowPinModal] = useState(false)
   const [checkingSession, setCheckingSession] = useState(true)
@@ -49,6 +58,25 @@ const UserDashboard = () => {
     fetchPurchaseRequests()
   }, [user, role])
 
+  // ------------------- FETCH GALLERY IMAGES -------------------
+  useEffect(() => {
+    const fetchImages = async () => {
+      setLoading(true)
+      try {
+        const { data, error } = await getAllImages()
+        if (error) throw error
+        setGalleryImages(data || [])
+      } catch (err) {
+        console.error('Error fetching images:', err)
+        toast.error('Failed to load images')
+      } finally {
+        setLoading(false)
+      }
+    }
+
+    fetchImages()
+  }, [])
+
   // ------------------- SIGN OUT -------------------
   const handleSignOut = async () => {
     try {
@@ -59,6 +87,24 @@ const UserDashboard = () => {
     } catch (err) {
       console.error('Sign out error:', err)
       toast.error('Failed to sign out')
+    }
+  }
+
+  // ------------------- PURCHASE REQUEST -------------------
+  const handlePurchaseRequest = async (imageId) => {
+    if (!user) {
+      toast.error('Please sign in first')
+      navigate('/auth')
+      return
+    }
+    try {
+      const { error } = await createPurchaseRequest(user.id, imageId)
+      if (error) throw error
+      toast.success('Purchase request sent! The admin will get back to you within 24 hours.')
+      setPurchaseRequests(prev => [...prev, { image_id: imageId, status: 'pending', created_at: new Date().toISOString(), images: galleryImages.find(img => img.id === imageId) }])
+    } catch (err) {
+      console.error('Purchase request error:', err)
+      toast.error('Failed to send request')
     }
   }
 
@@ -84,8 +130,8 @@ const UserDashboard = () => {
   // ------------------- TABS -------------------
   const tabs = [
     { id: 'profile', label: 'Profile', icon: User },
-    { id: 'gallery', label: 'Gallery Access', icon: Lock },
-    { id: 'purchases', label: 'Purchase History', icon: ShoppingCart }
+    { id: 'gallery', label: 'Gallery', icon: Eye },
+    { id: 'purchases', label: 'Purchases', icon: ShoppingCart }
   ]
 
   // ------------------- LOADING STATE -------------------
@@ -103,52 +149,54 @@ const UserDashboard = () => {
 
   // ------------------- JSX -------------------
   return (
-    <div className="min-h-screen bg-gray-50 py-6">
+    <div className="min-h-screen bg-gradient-to-br from-gray-50 to-gray-100 py-6">
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+        
         {/* Header */}
         <motion.div
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="bg-white rounded-lg shadow-sm p-4 lg:p-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center space-y-4 sm:space-y-0"
+          className="bg-white rounded-2xl shadow-md p-6 mb-8 flex flex-col sm:flex-row justify-between items-start sm:items-center"
         >
           <div>
-            <h1 className="text-2xl lg:text-3xl font-bold text-gray-900">
+            <h1 className="text-3xl font-bold text-gray-900">
               Welcome, {user?.user_metadata?.name || user?.email}
             </h1>
-            <p className="text-gray-600 mt-1 text-sm lg:text-base">Manage your account and access exclusive content</p>
+            <p className="text-gray-600 mt-2">Manage your account and explore our collections</p>
           </div>
           <button
             onClick={handleSignOut}
-            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition-colors"
+            className="flex items-center space-x-2 bg-red-600 text-white px-4 py-2 rounded-xl hover:bg-red-700 transition"
           >
             <LogOut className="w-4 h-4" />
             <span>Sign Out</span>
           </button>
         </motion.div>
 
-        <div className="grid lg:grid-cols-4 gap-4 lg:gap-8">
+        <div className="grid lg:grid-cols-4 gap-6">
+          
           {/* Sidebar / Tabs */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-1"
           >
-            <div className="bg-white rounded-lg shadow-sm p-3 lg:p-6">
-              <nav className="flex lg:flex-col space-x-2 lg:space-x-0 lg:space-y-2 overflow-x-auto">
+            <div className="bg-white rounded-2xl shadow p-4">
+              <nav className="flex lg:flex-col gap-2 overflow-x-auto">
                 {tabs.map((tab) => {
                   const Icon = tab.icon
                   return (
                     <button
                       key={tab.id}
                       onClick={() => setActiveTab(tab.id)}
-                      className={`flex items-center space-x-2 lg:space-x-3 px-3 py-2 rounded-lg text-left transition-colors flex-shrink-0 lg:flex-shrink-auto ${
+                      className={`flex items-center gap-3 px-4 py-3 rounded-xl transition font-medium ${
                         activeTab === tab.id
                           ? 'bg-black text-white'
                           : 'text-gray-600 hover:bg-gray-100'
                       }`}
                     >
                       <Icon className="w-5 h-5" />
-                      <span className="text-sm lg:text-base">{tab.label}</span>
+                      <span>{tab.label}</span>
                     </button>
                   )
                 })}
@@ -162,60 +210,88 @@ const UserDashboard = () => {
             animate={{ opacity: 1, x: 0 }}
             className="lg:col-span-3"
           >
-            <div className="bg-white rounded-lg shadow-sm p-4 lg:p-6 space-y-6">
-              {/* Profile Tab */}
+            <div className="bg-white rounded-2xl shadow p-6 space-y-6">
+              
+              {/* Profile */}
               {activeTab === 'profile' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Profile Information</h2>
-                  <div className="grid md:grid-cols-2 gap-4 lg:gap-6">
+                  <h2 className="text-2xl font-bold text-gray-900">Profile Information</h2>
+                  <div className="grid md:grid-cols-2 gap-6">
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Name</label>
-                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">
-                        {user?.user_metadata?.name || 'Not provided'}
-                      </div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Name</label>
+                      <div className="p-3 bg-gray-50 rounded-lg">{user?.user_metadata?.name || 'Not provided'}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Email</label>
-                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">{user?.email}</div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Email</label>
+                      <div className="p-3 bg-gray-50 rounded-lg">{user?.email}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Account Created</label>
-                      <div className="p-2 lg:p-3 bg-gray-50 rounded-lg text-sm lg:text-base">{new Date(user?.created_at).toLocaleDateString()}</div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Joined</label>
+                      <div className="p-3 bg-gray-50 rounded-lg">{new Date(user?.created_at).toLocaleDateString()}</div>
                     </div>
                     <div>
-                      <label className="block text-sm font-medium text-gray-700 mb-1 lg:mb-2">Status</label>
-                      <div className="p-2 lg:p-3 bg-green-50 rounded-lg text-green-800 text-sm lg:text-base">Active</div>
+                      <label className="block text-sm font-medium text-gray-600 mb-1">Status</label>
+                      <div className="p-3 bg-green-50 rounded-lg text-green-800">Active</div>
                     </div>
                   </div>
                 </div>
               )}
 
-              {/* Gallery Tab */}
+              {/* Gallery */}
               {activeTab === 'gallery' && (
-                <div className="space-y-6">
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Gallery Access</h2>
-                  <div className="bg-blue-50 border border-blue-200 rounded-lg p-4 lg:p-6 flex flex-col sm:flex-row items-start sm:items-center space-y-4 sm:space-y-0 sm:space-x-4">
-                    <Eye className="w-6 h-6 text-blue-600 mt-1 sm:mt-0" />
-                    <div>
-                      <h3 className="text-lg font-semibold text-blue-900">Access Protected Collections</h3>
-                      <p className="text-blue-700 mt-2 text-sm lg:text-base">
-                        Each collection in our gallery is password-protected. Use your PIN to access purchased or assigned collections.
-                      </p>
-                      <button
-                        onClick={() => setShowPinModal(true)}
-                        className="mt-4 bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition-colors"
-                      >
-                        Enter Collection PIN
-                      </button>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Explore Gallery</h2>
+                  {loading ? (
+                    <div className="flex justify-center py-12">
+                      <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                        className="w-10 h-10 border-4 border-gray-300 border-t-black rounded-full"
+                      />
                     </div>
-                  </div>
+                  ) : galleryImages.length === 0 ? (
+                    <p className="text-center text-gray-500">No images available yet</p>
+                  ) : (
+                    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                      {galleryImages.map((img) => (
+                        <div
+                          key={img.id}
+                          className="border rounded-xl overflow-hidden shadow hover:shadow-lg transition"
+                        >
+                          <img
+                            src={img.image_url}
+                            alt={img.title}
+                            className="w-full h-48 object-cover"
+                          />
+                          <div className="p-4 space-y-3">
+                            <h3 className="font-semibold text-gray-900">{img.title}</h3>
+                            <p className="text-sm text-gray-600">{img.description || 'No description'}</p>
+                            <div className="flex gap-3">
+                              <button
+                                onClick={() => handlePurchaseRequest(img.id)}
+                                className="flex-1 bg-blue-600 text-white py-2 rounded-lg hover:bg-blue-700 transition"
+                              >
+                                Request
+                              </button>
+                              <button
+                                onClick={() => navigate('/auth')}
+                                className="flex items-center justify-center bg-gray-100 px-3 py-2 rounded-lg hover:bg-gray-200"
+                              >
+                                <Download className="w-4 h-4 text-gray-600" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  )}
                 </div>
               )}
 
-              {/* Purchases Tab */}
+              {/* Purchases */}
               {activeTab === 'purchases' && (
-                <div className="space-y-6">
-                  <h2 className="text-xl lg:text-2xl font-bold text-gray-900">Purchase History</h2>
+                <div>
+                  <h2 className="text-2xl font-bold text-gray-900 mb-4">Purchase History</h2>
                   {loading ? (
                     <div className="flex justify-center py-8">
                       <motion.div
@@ -225,11 +301,7 @@ const UserDashboard = () => {
                       />
                     </div>
                   ) : purchaseRequests.length === 0 ? (
-                    <div className="text-center py-12">
-                      <ShoppingCart className="w-16 h-16 text-gray-300 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-500 mb-2">No Purchase Requests Yet</h3>
-                      <p className="text-gray-400 text-sm lg:text-base">Browse our gallery and make your first purchase request.</p>
-                    </div>
+                    <p className="text-center text-gray-500">No purchase requests yet</p>
                   ) : (
                     <div className="space-y-4">
                       {purchaseRequests.map((request) => (
@@ -237,30 +309,35 @@ const UserDashboard = () => {
                           key={request.id}
                           initial={{ opacity: 0, y: 20 }}
                           animate={{ opacity: 1, y: 0 }}
-                          className="border border-gray-200 rounded-lg p-4 lg:p-6 hover:shadow-md transition-shadow flex flex-col sm:flex-row sm:justify-between sm:items-start space-y-2 sm:space-y-0 sm:space-x-4"
+                          className="border rounded-xl p-4 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm gap-4"
                         >
-                          <div className="flex space-x-4 w-full sm:w-auto">
-                            <img
-                              src={`https://images.pexels.com/photos/${Math.floor(Math.random() * 1000000) + 1000000}/pexels-photo-${Math.floor(Math.random() * 1000000) + 1000000}.jpeg?auto=compress&cs=tinysrgb&w=200&h=150&fit=crop`}
-                              alt={request.images?.title}
-                              className="w-full sm:w-24 h-32 sm:h-18 object-cover rounded-lg"
-                            />
-                            <div className="flex-1">
-                              <h3 className="text-md lg:text-lg font-semibold text-gray-900">{request.images?.title || 'Untitled'}</h3>
-                              <p className="text-sm text-gray-600">Collection: {request.images?.collections?.title || 'Unknown'}</p>
-                              <p className="text-xs lg:text-sm text-gray-500 mt-1">Requested: {new Date(request.created_at).toLocaleDateString()}</p>
-                              {request.details?.size && (
-                                <p className="text-xs lg:text-sm text-gray-600 mt-1">
-                                  Size: {request.details.size}{request.details.frame && `, Frame: ${request.details.frame}`}
-                                </p>
-                              )}
-                            </div>
+                          <div>
+                            <p className="font-semibold">{request.images?.title || 'Untitled'}</p>
+                            <p className="text-sm text-gray-600">
+                              Requested: {new Date(request.created_at).toLocaleDateString()}
+                            </p>
                           </div>
-                          <div className="flex items-center space-x-2 mt-2 sm:mt-0">
+                          <div className="flex items-center gap-3">
                             {getStatusIcon(request.status)}
-                            <span className={`px-2 py-1 rounded-full text-xs lg:text-sm font-medium ${getStatusColor(request.status)}`}>
-                              {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
+                            <span
+                              className={`px-3 py-1 rounded-full text-xs font-medium ${getStatusColor(
+                                request.status
+                              )}`}
+                            >
+                              {request.status}
                             </span>
+
+                            {/* ✅ WhatsApp button only when approved */}
+                            {request.status === 'approved' && (
+                              <a
+                                href="https://wa.me/2347060553627"
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="flex items-center gap-2 bg-green-600 text-white px-3 py-1 rounded-lg hover:bg-green-700 transition text-sm"
+                              >
+                                <span>Chat Admin</span>
+                              </a>
+                            )}
                           </div>
                         </motion.div>
                       ))}
@@ -268,22 +345,19 @@ const UserDashboard = () => {
                   )}
                 </div>
               )}
+
             </div>
           </motion.div>
         </div>
       </div>
 
-      {/* Pin Modal */}
+      {/* PIN Modal */}
       {showPinModal && (
         <PinModal
           onClose={() => setShowPinModal(false)}
           onSubmit={(pin) => {
             setShowPinModal(false)
-            navigate('/')
-            setTimeout(() => {
-              const galleryElement = document.getElementById('gallery')
-              if (galleryElement) galleryElement.scrollIntoView({ behavior: 'smooth' })
-            }, 100)
+            toast.success(`PIN ${pin} submitted`)
           }}
           title="Enter Collection PIN"
         />

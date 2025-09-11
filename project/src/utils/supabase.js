@@ -66,6 +66,14 @@ export const getCollections = async () => {
   return { data, error };
 };
 
+// helper to normalize old filenames into full URLs
+const normalizeImageUrl = (path) => {
+  if (!path) return null;
+  return path.startsWith("http")
+    ? path
+    : supabase.storage.from("images").getPublicUrl(path).data.publicUrl;
+};
+
 export const getCollectionImages = async (collectionId) => {
   const { data, error } = await supabase
     .from("images")
@@ -77,13 +85,12 @@ export const getCollectionImages = async (collectionId) => {
 
   const normalized = data.map((img) => ({
     ...img,
-    url: img.image_url, // normalize for frontend
+    url: normalizeImageUrl(img.image_url),
   }));
 
   return { data: normalized, error: null };
 };
 
-// Fetch preview images for public gallery (limit 15)
 export const getPublicGalleryImages = async () => {
   const { data, error } = await supabase
     .from("images")
@@ -95,11 +102,31 @@ export const getPublicGalleryImages = async () => {
 
   const normalized = data.map((img) => ({
     ...img,
-    url: img.image_url, // normalize
+    url: normalizeImageUrl(img.image_url),
   }));
 
   return { data: normalized, error: null };
 };
+
+export const getAllImages = async () => {
+  const { data, error } = await supabase
+    .from("images")
+    .select("id, title, image_url, collection_id, created_at")
+    .order("created_at", { ascending: false });
+
+  if (error) {
+    console.error("Error fetching images:", error.message);
+    return { data: [], error };
+  }
+
+  const normalized = data.map((img) => ({
+    ...img,
+    image_url: normalizeImageUrl(img.image_url), // 🔥 always overwrite here
+  }));
+
+  return { data: normalized, error: null };
+};
+
 
 export const verifyCollectionPin = async (collectionId, pin) => {
   const bcrypt = await import("bcryptjs");
@@ -128,25 +155,33 @@ export const createPurchaseRequest = async (userId, imageId, details) => {
 export const getUserPurchaseRequests = async (userId) => {
   const { data, error } = await supabase
     .from("purchase_requests")
-    .select(
-      `
-      *,
-      images (id, title, image_url, collections (title))
-    `
-    )
+    .select(`
+      id,
+      status,
+      details,
+      created_at,
+      images (id, title, image_url),
+      users (id, name, email)
+    `)
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
-  if (error) return { data: null, error };
+  if (error) {
+    console.error("Error fetching user purchase requests:", error.message);
+    return { data: [], error };
+  }
 
-  // normalize
+  // normalize URLs
   const normalized = data.map((req) => ({
     ...req,
-    images: req.images ? { ...req.images, url: req.images.image_url } : null,
+    images: req.images
+      ? { ...req.images, url: normalizeImageUrl(req.images.image_url) }
+      : null,
   }));
 
   return { data: normalized, error: null };
 };
+
 
 //
 // ---------------- CONTACT FORM ----------------
@@ -190,7 +225,9 @@ export const getAllPurchaseRequests = async () => {
 
   const normalized = data.map((req) => ({
     ...req,
-    images: req.images ? { ...req.images, url: req.images.image_url } : null,
+    images: req.images
+      ? { ...req.images, url: normalizeImageUrl(req.images.image_url) }
+      : null,
   }));
 
   return { data: normalized, error: null };
@@ -249,7 +286,7 @@ export const saveImageMetadata = async (title, collectionId, uploadedBy, file) =
           title,
           collection_id: collectionId,
           uploaded_by: uploadedBy,
-          image_url: urlData.publicUrl,
+          image_url: urlData.publicUrl, // store full URL
         },
       ])
       .select();
