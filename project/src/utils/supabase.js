@@ -127,7 +127,6 @@ export const getAllImages = async () => {
   return { data: normalized, error: null };
 };
 
-
 export const verifyCollectionPin = async (collectionId, pin) => {
   const bcrypt = await import("bcryptjs");
   const { data, error } = await supabase
@@ -145,24 +144,34 @@ export const verifyCollectionPin = async (collectionId, pin) => {
 // ---------------- PURCHASE REQUEST ----------------
 //
 
-export const createPurchaseRequest = async (userId, imageId, details) => {
+// Create a purchase request
+export const createPurchaseRequest = async (userId, imageId) => {
   const { data, error } = await supabase
     .from("purchase_requests")
-    .insert([{ user_id: userId, image_id: imageId, details, status: "pending" }]);
+    .insert([{ user_id: userId, image_id: imageId, status: "pending" }])
+    .select();
+
   return { data, error };
 };
 
+// Get all purchase requests for a specific user
 export const getUserPurchaseRequests = async (userId) => {
+  if (!userId) return { data: [], error: "No user ID provided" };
+
   const { data, error } = await supabase
     .from("purchase_requests")
-    .select(`
+    .select(
+      `
       id,
       status,
-      details,
       created_at,
-      images (id, title, image_url),
-      users (id, name, email)
-    `)
+      image:images (
+        id,
+        title,
+        image_url
+      )
+    `
+    )
     .eq("user_id", userId)
     .order("created_at", { ascending: false });
 
@@ -171,17 +180,24 @@ export const getUserPurchaseRequests = async (userId) => {
     return { data: [], error };
   }
 
-  // normalize URLs
-  const normalized = data.map((req) => ({
-    ...req,
-    images: req.images
-      ? { ...req.images, url: normalizeImageUrl(req.images.image_url) }
+  // Normalize image URL for frontend
+  const normalized = (data || []).map((req) => ({
+    id: req.id,
+    status: req.status,
+    created_at: req.created_at,
+    image: req.image
+      ? {
+          id: req.image.id,
+          title: req.image.title,
+          url: req.image.image_url
+            ? normalizeImageUrl(req.image.image_url)
+            : null,
+        }
       : null,
   }));
 
   return { data: normalized, error: null };
 };
-
 
 //
 // ---------------- CONTACT FORM ----------------
@@ -263,7 +279,12 @@ export const uploadFile = async (file, folder = "uploads") => {
 };
 
 // Upload + Save metadata into `images` table
-export const saveImageMetadata = async (title, collectionId, uploadedBy, file) => {
+export const saveImageMetadata = async (
+  title,
+  collectionId,
+  uploadedBy,
+  file
+) => {
   try {
     // 1. Upload file
     const filePath = `uploads/${Date.now()}-${file.name}`;

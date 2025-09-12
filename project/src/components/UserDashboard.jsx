@@ -38,42 +38,56 @@ const UserDashboard = () => {
     setCheckingSession(false)
   }, [user, role, navigate])
 
-  // FETCH PURCHASE REQUESTS
+  // FETCH ALL DATA
   useEffect(() => {
-    const fetchPurchaseRequests = async () => {
-      if (!user || role !== 'user') return
+    const fetchAllData = async () => {
+      if (!user?.id) return
+      
       setLoading(true)
       try {
-        const { data, error } = await getUserPurchaseRequests(user.id)
-        if (error) throw error
-        setPurchaseRequests(data || [])
-      } catch (err) {
-        console.error(err)
-        toast.error('Failed to load purchase requests')
-      } finally {
-        setLoading(false)
-      }
-    }
-    fetchPurchaseRequests()
-  }, [user, role])
+        // Fetch images and requests in parallel
+        const [imagesResult, requestsResult] = await Promise.all([
+          getAllImages(),
+          getUserPurchaseRequests(user.id)
+        ]);
 
-  // FETCH GALLERY IMAGES
-  useEffect(() => {
-    const fetchImages = async () => {
-      setLoading(true)
-      try {
-        const { data, error } = await getAllImages()
-        if (error) throw error
-        setGalleryImages(data || [])
+        if (imagesResult.error) throw imagesResult.error;
+        if (requestsResult.error) throw requestsResult.error;
+
+        setGalleryImages(imagesResult.data || []);
+
+        // DEBUG: Log the raw data structure
+        console.log('Raw purchase requests:', requestsResult.data);
+        console.log('Raw gallery images:', imagesResult.data);
+
+        // Merge purchase requests with image data
+        const mergedRequests = (requestsResult.data || []).map(request => {
+          const imageData = imagesResult.data?.find(img => img.id === request.image_id);
+          console.log('Merging request:', request, 'with image:', imageData);
+          
+          return {
+            ...request,
+            image: imageData || { 
+              title: 'Unknown Image', 
+              image_url: '', 
+              description: 'Image data not available' 
+            }
+          };
+        });
+
+        console.log('Merged requests:', mergedRequests);
+        setPurchaseRequests(mergedRequests);
+
       } catch (err) {
-        console.error(err)
-        toast.error('Failed to load images')
+        console.error('Error fetching data:', err);
+        toast.error('Failed to load data');
       } finally {
-        setLoading(false)
+        setLoading(false);
       }
-    }
-    fetchImages()
-  }, [])
+    };
+
+    fetchAllData();
+  }, [user?.id]);
 
   // SIGN OUT
   const handleSignOut = async () => {
@@ -99,7 +113,26 @@ const UserDashboard = () => {
       const { error } = await createPurchaseRequest(user.id, imageId)
       if (error) throw error
       toast.success('Purchase request sent! Admin will contact you within 24 hours.')
-      setPurchaseRequests(prev => [...prev, { image_id: imageId, status: 'pending', created_at: new Date().toISOString(), images: galleryImages.find(img => img.id === imageId) }])
+      
+      // Find the image data from galleryImages
+      const imageData = galleryImages.find(img => img.id === imageId)
+      
+      // Immediately update UI with merged data
+      setPurchaseRequests(prev => [
+        { 
+          id: Date.now().toString(), // Use timestamp for better unique ID
+          user_id: user.id,
+          image_id: imageId,
+          status: 'pending',
+          created_at: new Date().toISOString(),
+          image: imageData || { 
+            title: 'New Request', 
+            image_url: '', 
+            description: 'Pending image data' 
+          }
+        },
+        ...prev
+      ])
     } catch (err) {
       console.error(err)
       toast.error('Failed to send request')
@@ -357,37 +390,42 @@ const UserDashboard = () => {
                       </div>
                     ) : (
                       <div className="space-y-4">
-                        {purchaseRequests.map(request => (
-                          <motion.div
-                            key={request.id}
-                            initial={{ opacity: 0, y: 20 }}
-                            animate={{ opacity: 1, y: 0 }}
-                            className="border rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm gap-4 hover:shadow-md transition-all"
-                          >
-                            <div className="flex-1">
-                              <p className="font-semibold text-gray-900">{request.images?.title || 'Untitled'}</p>
-                              <p className="text-sm text-gray-600 mt-1">
-                                Requested on {new Date(request.created_at).toLocaleDateString()}
-                              </p>
-                            </div>
-                            <div className="flex items-center gap-3 flex-wrap">
-                              {getStatusIcon(request.status)}
-                              <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getStatusColor(request.status)}`}>
-                                {request.status.charAt(0).toUpperCase() + request.status.slice(1)}
-                              </span>
-                              {request.status === 'approved' && (
-                                <a
-                                  href="https://wa.me/2347060553627"
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="flex items-center gap-2 bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 transition text-sm font-medium"
-                                >
-                                  Chat Admin
-                                </a>
-                              )}
-                            </div>
-                          </motion.div>
-                        ))}
+                        {purchaseRequests.map(request => {
+                          console.log('Rendering request:', request); // Debug log
+                          return (
+                            <motion.div
+                              key={request.id}
+                              initial={{ opacity: 0, y: 20 }}
+                              animate={{ opacity: 1, y: 0 }}
+                              className="border rounded-2xl p-5 flex flex-col md:flex-row justify-between items-start md:items-center shadow-sm gap-4 hover:shadow-md transition-all"
+                            >
+                              <div className="flex-1">
+                                <p className="font-semibold text-gray-900">
+                                  {request.image?.title || 'Unknown Image'}
+                                </p>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  Requested on {request.created_at ? new Date(request.created_at).toLocaleDateString() : 'Unknown date'}
+                                </p>
+                              </div>
+                              <div className="flex items-center gap-3 flex-wrap">
+                                {getStatusIcon(request.status ?? 'pending')}
+                                <span className={`px-3 py-1.5 rounded-full text-xs font-medium ${getStatusColor(request.status ?? 'pending')}`}>
+                                  {(request.status ?? 'pending').charAt(0).toUpperCase() + (request.status ?? 'pending').slice(1)}
+                                </span>
+                                {request.status === 'approved' && (
+                                  <a
+                                    href="https://wa.me/2347060553627"
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="flex items-center gap-2 bg-green-600 text-white px-4 py-1.5 rounded-lg hover:bg-green-700 transition text-sm font-medium"
+                                  >
+                                    Chat Admin
+                                  </a>
+                                )}
+                              </div>
+                            </motion.div>
+                          );
+                        })}
                       </div>
                     )}
                   </motion.div>

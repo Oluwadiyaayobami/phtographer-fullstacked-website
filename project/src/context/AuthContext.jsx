@@ -56,11 +56,13 @@ export const AuthProvider = ({ children }) => {
     };
     init();
 
-    const { subscription } = supabase.auth.onAuthStateChange((_event, session) => {
-      handleSession(session);
-    });
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      (_event, session) => {
+        handleSession(session);
+      }
+    );
 
-    return () => subscription?.unsubscribe();
+    return () => subscription.unsubscribe();
   }, []);
 
   // Signup
@@ -109,15 +111,6 @@ export const AuthProvider = ({ children }) => {
   const logout = async () => {
     setLoading(true);
     try {
-      // Get current session
-      const { data } = await supabase.auth.getSession();
-      if (!data.session) {
-        console.warn("No active session to log out from");
-        setUser(null);
-        navigate("/login");
-        return;
-      }
-
       const { error } = await supabase.auth.signOut();
       if (error) throw error;
 
