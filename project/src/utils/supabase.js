@@ -326,3 +326,24 @@ export const createSignedUrl = async (imagePath, expires = 60) => {
     .createSignedUrl(imagePath, expires);
   return { data, error };
 };
+//
+// ---------------- DOWNLOAD PIN ----------------
+//
+
+// Fetch the current download PIN
+export const getDownloadPin = async () => {
+  const { data, error } = await supabase
+    .from("download_pin")  // your table is named download_pin
+    .select("pin")
+    .single(); // assuming you have only one row storing the pin
+  return { pin: data?.pin || null, error };
+};
+
+// Update the download PIN (admin only)
+export const updateDownloadPin = async (newPin) => {
+  const { data, error } = await supabase
+    .from("download_pin")
+    .update({ pin: newPin })
+    .eq("id", 1); // assuming single row has id = 1
+  return { data, error };
+};

@@ -13,6 +13,8 @@ import {
   ChevronDown,
   Check,
   X,
+  Download,
+  Key,
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAllPurchaseRequests, updatePurchaseRequestStatus, supabase } from '../utils/supabase';
@@ -39,8 +41,74 @@ const AdminDashboard = () => {
   const [images, setImages] = useState([]);
 
   // Upload UI state
-  const [uploadQueue, setUploadQueue] = useState([]); // [{name, progress, status}]
+  const [uploadQueue, setUploadQueue] = useState([]);
   const [isUploading, setIsUploading] = useState(false);
+
+  // Pin for download
+  const [downloadPin, setDownloadPin] = useState('');
+  const [isUpdatingPin, setIsUpdatingPin] = useState(false);
+  const [pinInitialized, setPinInitialized] = useState(false);
+
+  // ---------- Download PIN ----------
+  useEffect(() => {
+    fetchDownloadPin();
+  }, []);
+
+  const fetchDownloadPin = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('download_pin')
+        .select('pin')
+        .maybeSingle(); // Use maybeSingle to handle no rows
+      
+      if (error) {
+        console.error('Error fetching PIN:', error);
+        toast.error('Failed to load download PIN');
+        return;
+      }
+      
+      if (data) {
+        setDownloadPin(data.pin);
+        setPinInitialized(true);
+      } else {
+        // No PIN exists yet
+        setDownloadPin('1234'); // Set default value
+        setPinInitialized(false);
+      }
+    } catch (err) {
+      console.error('Failed to fetch download PIN:', err);
+      toast.error('Failed to load download PIN');
+    }
+  };
+
+  const handleSavePin = async () => {
+    if (!downloadPin.trim()) {
+      toast.error('Please enter a valid PIN');
+      return;
+    }
+    
+    setIsUpdatingPin(true);
+    
+    try {
+      // Use upsert to handle both insert and update
+      const { error } = await supabase
+        .from('download_pin')
+        .upsert({ id: 1, pin: downloadPin }, { onConflict: 'id' });
+      
+      if (error) {
+        console.error('Error saving PIN:', error);
+        throw error;
+      }
+      
+      toast.success('PIN saved successfully');
+      setPinInitialized(true);
+    } catch (err) {
+      console.error('Failed to save PIN:', err);
+      toast.error('Failed to save PIN');
+    } finally {
+      setIsUpdatingPin(false);
+    }
+  };
 
   // ---------- Purchase Requests ----------
   useEffect(() => {
@@ -133,7 +201,7 @@ const AdminDashboard = () => {
     const list = Array.from(files).map((f) => ({
       name: f.name,
       progress: 0,
-      status: 'queued', // queued | uploading | done | error
+      status: 'queued',
     }));
     setUploadQueue(list);
     setIsUploading(true);
@@ -143,13 +211,11 @@ const AdminDashboard = () => {
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
 
-      // update: start uploading
       setUploadQueue((prev) =>
         prev.map((it, idx) => (idx === i ? { ...it, status: 'uploading', progress: 5 } : it))
       );
 
       try {
-        // Simulated progress while upload runs
         let tick = 5;
         const progressTimer = setInterval(() => {
           tick = Math.min(tick + 7, 90);
@@ -172,17 +238,9 @@ const AdminDashboard = () => {
           continue;
         }
 
-        const { data: urlData, error: urlError } = supabase.storage
+        const { data: urlData } = supabase.storage
           .from('images')
           .getPublicUrl(`${folder}/${file.name}`);
-
-        if (urlError) {
-          setUploadQueue((prev) =>
-            prev.map((it, idx) => (idx === i ? { ...it, status: 'error', progress: 100 } : it))
-          );
-          toast.error(`Failed to get URL for ${file.name}`);
-          continue;
-        }
 
         const publicUrl = urlData?.publicUrl;
 
@@ -204,7 +262,7 @@ const AdminDashboard = () => {
         }
 
         setUploadQueue((prev) =>
-        prev.map((it, idx) => (idx === i ? { ...it, status: 'done', progress: 100 } : it))
+          prev.map((it, idx) => (idx === i ? { ...it, status: 'done', progress: 100 } : it))
         );
         toast.success(`${file.name} uploaded successfully!`);
       } catch (err) {
@@ -223,9 +281,8 @@ const AdminDashboard = () => {
     if (!window.confirm(`Are you sure you want to delete "${image.title}"?`)) return;
 
     try {
-      // storage path from public URL
       const url = new URL(image.image_url);
-      const pathParts = url.pathname.split('/'); // ['', 'storage', 'v1', 'object', 'public', 'images', 'folder', 'file']
+      const pathParts = url.pathname.split('/');
       const idx = pathParts.findIndex((p) => p === 'images');
       const path = pathParts.slice(idx + 1).join('/');
 
@@ -722,6 +779,38 @@ const AdminDashboard = () => {
                         <span>Dark Mode</span>
                       </label>
                     </div>
+                    
+                    {/* Download PIN Section */}
+                    <div className="mt-6 pt-4 border-t border-gray-200 dark:border-gray-700">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 flex items-center gap-2">
+                        <Key className="w-5 h-5" />
+                        Download PIN
+                      </h3>
+                      <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 mt-3">
+                        <input
+                          type="text"
+                          value={downloadPin}
+                          onChange={(e) => setDownloadPin(e.target.value)}
+                          className="border rounded p-2 w-full sm:w-1/2 bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                          placeholder="Enter download PIN"
+                          disabled={isUpdatingPin}
+                        />
+                        <button
+                          onClick={handleSavePin}
+                          disabled={isUpdatingPin}
+                          className="px-4 py-2 bg-black text-white rounded hover:bg-gray-800 disabled:bg-gray-400 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200 disabled:dark:bg-gray-400"
+                        >
+                          {isUpdatingPin ? 'Saving...' : 'Save PIN'}
+                        </button>
+                      </div>
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mt-2">
+                        This PIN will be required for clients to download purchased content.
+                        {!pinInitialized && (
+                          <span className="text-amber-600 dark:text-amber-400 font-medium"> No PIN set yet. Please create one.</span>
+                        )}
+                      </p>
+                    </div>
+
                     <button
                       onClick={updateSettings}
                       className="bg-black text-white px-6 py-2 rounded hover:bg-gray-800 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
