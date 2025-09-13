@@ -201,13 +201,13 @@ const UserDashboard = () => {
       ctx.drawImage(img, 0, 0);
       
       // Add watermark text
-      ctx.font = 'bold 48px Arial';
+      ctx.font = 'bold 120px Arial';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
       
       // Add watermark in the center
-      ctx.fillText('PLENATHEGRAPHER', canvas.width / 2, canvas.height / 2);
+      ctx.fillText('©PLENATHEGRAPHER protected by buildify', canvas.width / 2, canvas.height / 2);
       
       // Add smaller watermark in corner
       ctx.font = 'bold 24px Arial';
