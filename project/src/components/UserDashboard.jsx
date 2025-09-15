@@ -201,7 +201,7 @@ const UserDashboard = () => {
       ctx.drawImage(img, 0, 0);
       
       // Add watermark text
-      ctx.font = 'bold 120px Arial';
+      ctx.font = 'bold 30px Arial';
       ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
@@ -212,6 +212,7 @@ const UserDashboard = () => {
       // Add smaller watermark in corner
       ctx.font = 'bold 24px Arial';
       ctx.fillText('© PLENATHEGRAPHER', canvas.width - 150, canvas.height - 30);
+
       
       // Convert to data URL and download
       const dataURL = canvas.toDataURL('image/jpeg');
@@ -383,7 +384,7 @@ const UserDashboard = () => {
                     </div>
                     
                     <div className="grid md:grid-cols-2 gap-5">
-                      <ProfileCard label="Full Name" value={user?.user_metadata?.name || 'Not provided'} />
+                      <ProfileCard label="Full Name" value={user?.name || 'Not provided'} />
                       <ProfileCard label="Email Address" value={user?.email} />
                       <ProfileCard label="Member Since" value={new Date(user?.created_at).toLocaleDateString()} />
                       <ProfileCard 

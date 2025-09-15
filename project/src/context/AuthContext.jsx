@@ -11,11 +11,11 @@ export const useAuth = () => {
 };
 
 export const AuthProvider = ({ children }) => {
-  const [user, setUser] = useState(null); // includes role
+  const [user, setUser] = useState(null); // includes role + name
   const [loading, setLoading] = useState(true);
   const navigate = useNavigate();
 
-  // Fetch user from Supabase DB to get role
+  // Fetch user from Supabase DB to get role and name
   const loadUser = async (authUser) => {
     try {
       const { data, error } = await supabase
@@ -26,7 +26,8 @@ export const AuthProvider = ({ children }) => {
 
       if (error) throw error;
 
-      const fullUser = { ...authUser, role: data.role };
+      // Merge auth user (id, email, etc.) with DB fields (name, role, etc.)
+      const fullUser = { ...authUser, ...data };
       setUser(fullUser);
       return fullUser;
     } catch (err) {

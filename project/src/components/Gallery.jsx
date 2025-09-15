@@ -28,6 +28,8 @@ const Gallery = () => {
   const { user } = useAuth()
   const navigate = useNavigate()
 
+  const COMPANY_NAME = "PLENATHEGRAPHER ©" // ✅ set your company name here
+
   useEffect(() => {
     fetchCollections()
     fetchPublicImages()
@@ -51,7 +53,6 @@ const Gallery = () => {
       const { data, error } = await getPublicGalleryImages()
       if (error) throw error
       if (data && data.length > 0) {
-        // Shuffle and take only 15
         const random15 = data.sort(() => 0.5 - Math.random()).slice(0, 15)
         setImages(random15)
       }
@@ -106,7 +107,6 @@ const Gallery = () => {
     setActionType(action)
 
     if (action === 'download') {
-      // For preview gallery, disable downloads
       if (!selectedCollection) {
         toast.error('Downloads are for registered users only')
         navigate('/auth')
@@ -134,10 +134,9 @@ const Gallery = () => {
         const { data, error } = await createSignedUrl(selectedImage.image_url)
         if (error) throw error
 
-        // Create download link
         const link = document.createElement('a')
         link.href = data.signedUrl
-        link.download = selectedImage.title || 'image'
+        link.download = COMPANY_NAME // ✅ download with company name
         link.click()
 
         setShowPinModal(false)
@@ -154,7 +153,7 @@ const Gallery = () => {
   const handleShare = (image) => {
     if (navigator.share) {
       navigator.share({
-        title: image.title || 'PLENATHEGRAPHER Image',
+        title: COMPANY_NAME,
         text: 'Check out this amazing photograph!',
         url: window.location.href
       })
@@ -198,7 +197,7 @@ const Gallery = () => {
           </p>
         </motion.div>
 
-        {/* If no collection is selected, show preview images */}
+        {/* Preview gallery */}
         {!selectedCollection ? (
           <div className="grid md:grid-cols-2 lg:grid-cols-3 gap-6">
             {images.map((image, index) => (
@@ -211,7 +210,7 @@ const Gallery = () => {
               >
                 <img
                   src={image.image_url}
-                  alt={image.title}
+                  alt={COMPANY_NAME}
                   className="w-full h-64 object-cover cursor-pointer"
                   onClick={() => setSelectedImage(image)}
                   onContextMenu={(e) => e.preventDefault()}
@@ -256,15 +255,15 @@ const Gallery = () => {
                   </div>
                 </div>
 
-                {/* Image Title */}
+                {/* ✅ Always show company name */}
                 <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                  <h4 className="text-white font-semibold">{image.title}</h4>
+                  <h4 className="text-white font-semibold">{COMPANY_NAME}</h4>
                 </div>
               </motion.div>
             ))}
           </div>
         ) : (
-          // Collection Mode
+          // Collection mode
           <div>
             <div className="flex items-center justify-between mb-8">
               <h3 className="text-3xl font-bold text-white">{selectedCollection.title}</h3>
@@ -291,7 +290,7 @@ const Gallery = () => {
                 >
                   <img
                     src={image.image_url}
-                    alt={image.title}
+                    alt={COMPANY_NAME}
                     className="w-full h-64 object-cover cursor-pointer"
                     onClick={() => setSelectedImage(image)}
                     onContextMenu={(e) => e.preventDefault()}
@@ -336,9 +335,9 @@ const Gallery = () => {
                     </div>
                   </div>
 
-                  {/* Image Title */}
+                  {/* ✅ Always show company name */}
                   <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-black/80 to-transparent p-4">
-                    <h4 className="text-white font-semibold">{image.title}</h4>
+                    <h4 className="text-white font-semibold">{COMPANY_NAME}</h4>
                   </div>
                 </motion.div>
               ))}
