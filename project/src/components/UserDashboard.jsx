@@ -4,7 +4,7 @@ import {
   User, ShoppingCart, LogOut,
   Eye, Clock, CheckCircle, XCircle, Download, ChevronRight,
   Lock, ImageIcon, Crown, Folder, ArrowLeft, Grid, List,
-  Camera, MessageCircle, Star, Zap, Sparkles, Heart
+  Camera, MessageCircle, Star, Zap, Sparkles, Heart, Menu, X
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -41,6 +41,7 @@ const UserDashboard = () => {
   const [downloadType, setDownloadType] = useState('')
   const [viewMode, setViewMode] = useState('gallery')
   const [collectionView, setCollectionView] = useState(false)
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
   
   // Hire Photographer Form State
   const [showHireForm, setShowHireForm] = useState(false)
@@ -124,6 +125,7 @@ const UserDashboard = () => {
       if (error) throw error;
       setCollectionImages(data || []);
       setCollectionView(true);
+      setMobileMenuOpen(false); // Close mobile menu when navigating
     } catch (error) {
       console.error('Error fetching collection images:', error);
       toast.error('Failed to load collection images');
@@ -391,10 +393,10 @@ Please respond to this booking request at your earliest convenience.`;
   // STATUS ICONS & COLORS
   const getStatusIcon = (status) => {
     switch (status) {
-      case 'pending': return <Clock className="w-5 h-5 text-yellow-500" />
-      case 'approved': return <CheckCircle className="w-5 h-5 text-green-500" />
-      case 'denied': return <XCircle className="w-5 h-5 text-red-500" />
-      default: return <Clock className="w-5 h-5 text-gray-500" />
+      case 'pending': return <Clock className="w-4 h-4 text-yellow-500" />
+      case 'approved': return <CheckCircle className="w-4 h-4 text-green-500" />
+      case 'denied': return <XCircle className="w-4 h-4 text-red-500" />
+      default: return <Clock className="w-4 h-4 text-gray-500" />
     }
   }
 
@@ -420,88 +422,103 @@ Please respond to this booking request at your earliest convenience.`;
         <motion.div
           animate={{ rotate: 360, scale: [1, 1.1, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
         />
       </div>
     )
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 py-8">
-      <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 py-4 sm:py-8">
+      <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         
-          {/* Enhanced Header */}
+        {/* Enhanced Header - Mobile Optimized */}
         <motion.div
-        initial={{ opacity: 0, y: -30 }}
-        animate={{ opacity: 1, y: 0 }}
-        transition={{ duration: 0.6, type: "spring" }}
-        className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white rounded-3xl shadow-2xl p-6 sm:p-8 mb-8 overflow-hidden"
+          initial={{ opacity: 0, y: -20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.6 }}
+          className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden"
         >
-        <div className="absolute inset-0 bg-black/10"></div>
-        <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -translate-y-16 translate-x-16"></div>
-        <div className="absolute bottom-0 left-0 w-24 h-24 bg-white/10 rounded-full translate-y-12 -translate-x-12"></div>
+          <div className="absolute inset-0 bg-black/10"></div>
+          <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 sm:-translate-y-16 sm:translate-x-16"></div>
+          <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full translate-y-8 -translate-x-8 sm:translate-y-12 sm:-translate-x-12"></div>
 
-        <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center">
-        <div className="flex items-center mb-4 sm:mb-0">
-        <div className="bg-white/20 p-3 sm:p-4 rounded-2xl mr-4 sm:mr-6 backdrop-blur-sm">
-          <User className="w-6 h-6 sm:w-8 sm:h-8" />
-        </div>
-        <div>
-          <h1 className="text-xl sm:text-2xl md:text-3xl font-bold bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
-            Welcome back, {user?.user_metadata?.name || user?.email}!
-          </h1>
-          <p className="mt-1 sm:mt-2 text-purple-100 text-sm sm:text-base md:text-lg">
-            Your creative journey continues here
-          </p>
-        </div>
-        </div>
-        <motion.button
-        whileHover={{ scale: 1.05, backgroundColor: "rgba(255,255,255,0.3)" }}
-        whileTap={{ scale: 0.95 }}
-        onClick={handleSignOut}
-        className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all px-4 py-3 sm:px-6 sm:py-4 rounded-2xl font-semibold shadow-lg border border-white/20 text-sm sm:text-base"
-        >
-        <LogOut className="w-4 h-4 sm:w-5 sm:h-5" />
-        <span>Sign Out</span>
-        </motion.button>
-        </div>
+          <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+            <div className="flex items-center">
+              <div className="bg-white/20 p-2 sm:p-3 rounded-xl sm:rounded-2xl mr-3 sm:mr-4 backdrop-blur-sm">
+                <User className="w-5 h-5 sm:w-6 sm:h-6" />
+              </div>
+              <div>
+                <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
+                  Welcome, {user?.user_metadata?.name || user?.email}!
+                </h1>
+                <p className="mt-1 text-purple-100 text-xs sm:text-sm">
+                  Your creative journey continues
+                </p>
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-3 self-end sm:self-auto">
+              {/* Mobile Menu Button */}
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+                className="sm:hidden bg-white/20 backdrop-blur-sm p-2 rounded-xl border border-white/20"
+              >
+                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+              </motion.button>
+              
+              <motion.button
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+                onClick={handleSignOut}
+                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg border border-white/20 text-xs sm:text-sm"
+              >
+                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+                <span className="hidden xs:inline">Sign Out</span>
+              </motion.button>
+            </div>
+          </div>
         </motion.div>
 
-        <div className="flex flex-col lg:flex-row gap-8">
-
-          {/* Enhanced Sidebar */}
+        <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
+          {/* Enhanced Sidebar - Mobile Optimized */}
           <motion.div
-            initial={{ opacity: 0, x: -30 }}
+            initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
-            className="lg:w-1/4"
+            className={`lg:w-1/4 ${mobileMenuOpen ? 'block' : 'hidden'} sm:block`}
           >
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl p-6 sticky top-8 border border-white/20">
-              <nav className="flex flex-col gap-3">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 sticky top-4 border border-white/20">
+              <nav className="flex flex-col gap-2 sm:gap-3">
                 {tabs.map((tab, index) => {
                   const Icon = tab.icon
                   return (
                     <motion.button
                       key={tab.id}
-                      onClick={() => setActiveTab(tab.id)}
-                      whileHover={{ x: 8, backgroundColor: activeTab === tab.id ? "" : "rgba(99, 102, 241, 0.1)" }}
+                      onClick={() => {
+                        setActiveTab(tab.id)
+                        setMobileMenuOpen(false)
+                      }}
+                      whileHover={{ x: 4, backgroundColor: activeTab === tab.id ? "" : "rgba(99, 102, 241, 0.1)" }}
                       whileTap={{ scale: 0.98 }}
-                      initial={{ opacity: 0, x: -20 }}
+                      initial={{ opacity: 0, x: -10 }}
                       animate={{ opacity: 1, x: 0 }}
                       transition={{ duration: 0.4, delay: index * 0.1 }}
-                      className={`flex items-center justify-between gap-4 px-6 py-5 rounded-2xl transition-all font-semibold group ${
+                      className={`flex items-center justify-between gap-3 px-4 py-3 sm:px-5 sm:py-4 rounded-xl sm:rounded-2xl transition-all font-semibold text-sm sm:text-base group ${
                         activeTab === tab.id
                           ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-500/25'
                           : 'text-gray-700 hover:text-purple-700'
                       }`}
                     >
-                      <div className="flex items-center gap-4">
-                        <Icon className={`w-6 h-6 transition-transform group-hover:scale-110 ${
+                      <div className="flex items-center gap-3">
+                        <Icon className={`w-4 h-4 sm:w-5 sm:h-5 transition-transform group-hover:scale-110 ${
                           activeTab === tab.id ? 'text-white' : 'text-gray-500 group-hover:text-purple-600'
                         }`} />
-                        <span className="text-lg">{tab.label}</span>
+                        <span>{tab.label}</span>
                       </div>
-                      <ChevronRight className={`w-5 h-5 transition-transform duration-300 ${
+                      <ChevronRight className={`w-3 h-3 sm:w-4 sm:h-4 transition-transform duration-300 ${
                         activeTab === tab.id ? 'rotate-90 text-white' : 'text-gray-400 group-hover:text-purple-600'
                       }`} />
                     </motion.button>
@@ -510,62 +527,62 @@ Please respond to this booking request at your earliest convenience.`;
               </nav>
 
               {/* Quick Stats */}
-              <div className="mt-8 p-6 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-2xl border border-purple-200/50">
-                <h3 className="font-semibold text-gray-800 mb-4 flex items-center gap-2">
-                  <Zap className="w-5 h-5 text-purple-600" />
+              <div className="mt-6 p-4 bg-gradient-to-br from-purple-500/10 to-blue-500/10 rounded-xl sm:rounded-2xl border border-purple-200/50">
+                <h3 className="font-semibold text-gray-800 mb-3 flex items-center gap-2 text-sm sm:text-base">
+                  <Zap className="w-4 h-4 text-purple-600" />
                   Quick Stats
                 </h3>
-                <div className="space-y-3">
+                <div className="space-y-2">
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Images</span>
-                    <span className="font-semibold text-purple-700">{randomImages.length}</span>
+                    <span className="text-xs sm:text-sm text-gray-600">Images</span>
+                    <span className="font-semibold text-purple-700 text-sm">{randomImages.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Collections</span>
-                    <span className="font-semibold text-blue-700">{collections.length}</span>
+                    <span className="text-xs sm:text-sm text-gray-600">Collections</span>
+                    <span className="font-semibold text-blue-700 text-sm">{collections.length}</span>
                   </div>
                   <div className="flex justify-between items-center">
-                    <span className="text-sm text-gray-600">Requests</span>
-                    <span className="font-semibold text-cyan-700">{purchaseRequests.length}</span>
+                    <span className="text-xs sm:text-sm text-gray-600">Requests</span>
+                    <span className="font-semibold text-cyan-700 text-sm">{purchaseRequests.length}</span>
                   </div>
                 </div>
               </div>
             </div>
           </motion.div>
 
-          {/* Enhanced Content Area */}
+          {/* Enhanced Content Area - Mobile Optimized */}
           <motion.div
-            initial={{ opacity: 0, x: 30 }}
+            initial={{ opacity: 0, x: 20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.3 }}
             className="lg:w-3/4"
           >
-            <div className="bg-white/80 backdrop-blur-lg rounded-3xl shadow-xl p-8 space-y-8 border border-white/20">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 space-y-6 sm:space-y-8 border border-white/20">
 
               <AnimatePresence mode="wait">
-                {/* Enhanced Profile Tab */}
+                {/* Enhanced Profile Tab - Mobile Optimized */}
                 {activeTab === 'profile' && (
                   <motion.div
                     key="profile"
-                    initial={{ opacity: 0, y: 20 }}
+                    initial={{ opacity: 0, y: 10 }}
                     animate={{ opacity: 1, y: 0 }}
-                    exit={{ opacity: 0, y: -20 }}
-                    transition={{ duration: 0.4 }}
-                    className="space-y-8"
+                    exit={{ opacity: 0, y: -10 }}
+                    transition={{ duration: 0.3 }}
+                    className="space-y-6"
                   >
-                    <div className="flex items-center gap-4 mb-8">
-                      <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
-                        <User className="w-8 h-8 text-white" />
+                    <div className="flex items-center gap-3 mb-6">
+                      <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl sm:rounded-2xl shadow-lg">
+                        <User className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
                       </div>
                       <div>
-                        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
-                          Profile Information
+                        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
+                          Profile
                         </h2>
-                        <p className="text-gray-600 mt-2">Manage your account details and preferences</p>
+                        <p className="text-gray-600 text-xs sm:text-sm">Your account details</p>
                       </div>
                     </div>
                     
-                    <div className="grid md:grid-cols-2 gap-6">
+                    <div className="grid gap-4 sm:grid-cols-2 sm:gap-5">
                       <EnhancedProfileCard 
                         label="Full Name" 
                         value={user?.user_metadata?.name || 'Not provided'} 
@@ -573,7 +590,7 @@ Please respond to this booking request at your earliest convenience.`;
                         gradient="from-purple-500 to-pink-500"
                       />
                       <EnhancedProfileCard 
-                        label="Email Address" 
+                        label="Email" 
                         value={user?.email} 
                         icon={MessageCircle}
                         gradient="from-blue-500 to-cyan-500"
@@ -585,7 +602,7 @@ Please respond to this booking request at your earliest convenience.`;
                         gradient="from-green-500 to-emerald-500"
                       />
                       <EnhancedProfileCard 
-                        label="Account Status" 
+                        label="Status" 
                         value="Active" 
                         icon={CheckCircle}
                         gradient="from-emerald-500 to-green-500"
@@ -595,7 +612,7 @@ Please respond to this booking request at your earliest convenience.`;
                   </motion.div>
                 )}
 
-                {/* Enhanced Gallery Tab */}
+                {/* Enhanced Gallery Tab - Mobile Optimized */}
                 {activeTab === 'gallery' && (
                   <GalleryContent 
                     collectionView={collectionView}
@@ -626,7 +643,7 @@ Please respond to this booking request at your earliest convenience.`;
                   />
                 )}
 
-                {/* Enhanced Purchases Tab */}
+                {/* Enhanced Purchases Tab - Mobile Optimized */}
                 {activeTab === 'purchases' && (
                   <PurchasesContent 
                     loading={loading}
@@ -639,7 +656,7 @@ Please respond to this booking request at your earliest convenience.`;
                   />
                 )}
 
-                {/* New Hire Photographer Tab */}
+                {/* Hire Photographer Tab - Mobile Optimized */}
                 {activeTab === 'hire' && (
                   <HirePhotographerContent 
                     showHireForm={showHireForm}
@@ -676,22 +693,22 @@ Please respond to this booking request at your earliest convenience.`;
   )
 }
 
-// Enhanced Profile Card Component
+// Enhanced Profile Card Component - Mobile Optimized
 const EnhancedProfileCard = ({ label, value, icon: Icon, gradient, status = false }) => (
   <motion.div
-    whileHover={{ y: -5, scale: 1.02 }}
-    className={`p-6 rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-lg hover:shadow-xl transition-all duration-300`}
+    whileHover={{ y: -3, scale: 1.01 }}
+    className={`p-4 sm:p-5 rounded-xl sm:rounded-2xl bg-gradient-to-br ${gradient} text-white shadow-md hover:shadow-lg transition-all duration-300`}
   >
-    <div className="flex items-center justify-between mb-4">
-      <Icon className="w-8 h-8 text-white/80" />
-      {status && <div className="w-3 h-3 bg-white rounded-full animate-pulse"></div>}
+    <div className="flex items-center justify-between mb-3">
+      <Icon className="w-5 h-5 sm:w-6 sm:h-6 text-white/80" />
+      {status && <div className="w-2 h-2 sm:w-3 sm:h-3 bg-white rounded-full animate-pulse"></div>}
     </div>
-    <p className="text-sm font-medium text-white/80 mb-2">{label}</p>
-    <p className="text-xl font-bold">{value}</p>
+    <p className="text-xs sm:text-sm font-medium text-white/80 mb-1">{label}</p>
+    <p className="text-base sm:text-lg font-bold truncate">{value}</p>
   </motion.div>
 )
 
-// Gallery Content Component
+// Gallery Content Component - Mobile Optimized
 const GalleryContent = ({
   collectionView, selectedCollection, loading, collectionImages, purchaseRequests,
   randomImages, viewMode, collections, onBackToCollections, onViewModeChange,
@@ -700,65 +717,65 @@ const GalleryContent = ({
 }) => (
   <motion.div
     key="gallery"
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.4 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.3 }}
   >
-    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
-      <div className="flex items-center gap-4">
-        <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
-          <Eye className="w-8 h-8 text-white" />
+    <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 mb-6">
+      <div className="flex items-center gap-3">
+        <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl sm:rounded-2xl shadow-lg">
+          <Eye className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
         </div>
         <div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
-            {collectionView ? selectedCollection?.title : 'Explore Gallery'}
+          <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
+            {collectionView ? selectedCollection?.title : 'Gallery'}
           </h2>
-          <p className="text-gray-600 mt-2">
-            {collectionView ? 'Browse collection images' : 'Discover amazing photography'}
+          <p className="text-gray-600 text-xs sm:text-sm">
+            {collectionView ? 'Collection images' : 'Discover photography'}
           </p>
         </div>
       </div>
       
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2 sm:gap-3">
         {collectionView && (
           <motion.button
-            whileHover={{ x: -5 }}
+            whileHover={{ x: -3 }}
             whileTap={{ scale: 0.95 }}
             onClick={onBackToCollections}
-            className="flex items-center gap-3 px-5 py-3 text-gray-600 hover:text-purple-700 transition-colors bg-white/50 rounded-2xl border border-gray-200 hover:border-purple-300"
+            className="flex items-center gap-2 px-3 py-2 text-gray-600 hover:text-purple-700 transition-colors bg-white/50 rounded-xl border border-gray-200 hover:border-purple-300 text-sm"
           >
-            <ArrowLeft className="w-5 h-5" />
-            <span className="font-medium">Back to Collections</span>
+            <ArrowLeft className="w-4 h-4" />
+            <span className="font-medium">Back</span>
           </motion.button>
         )}
         
         {!collectionView && (
-          <div className="flex bg-gray-100 rounded-2xl p-2 border border-gray-200">
+          <div className="flex bg-gray-100 rounded-xl p-1 border border-gray-200 text-xs sm:text-sm">
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onViewModeChange('gallery')}
-              className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-medium ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all font-medium ${
                 viewMode === 'gallery' 
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md' 
                   : 'text-gray-600 hover:text-purple-700 hover:bg-white'
               }`}
             >
-              <Grid className="w-5 h-5" />
-              <span>Individual Images</span>
+              <Grid className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span>Images</span>
             </motion.button>
             <motion.button
-              whileHover={{ scale: 1.05 }}
+              whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.95 }}
               onClick={() => onViewModeChange('collections')}
-              className={`flex items-center gap-3 px-5 py-3 rounded-xl transition-all font-medium ${
+              className={`flex items-center gap-2 px-3 py-2 rounded-lg transition-all font-medium ${
                 viewMode === 'collections' 
-                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg' 
+                  ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-md' 
                   : 'text-gray-600 hover:text-purple-700 hover:bg-white'
               }`}
             >
-              <Folder className="w-5 h-5" />
+              <Folder className="w-3 h-3 sm:w-4 sm:h-4" />
               <span>Collections</span>
             </motion.button>
           </div>
@@ -767,11 +784,11 @@ const GalleryContent = ({
     </div>
     
     {loading ? (
-      <div className="flex justify-center items-center py-20">
+      <div className="flex justify-center items-center py-12">
         <motion.div
-          animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+          animate={{ rotate: 360, scale: [1, 1.1, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
         />
       </div>
     ) : collectionView ? (
@@ -807,7 +824,7 @@ const GalleryContent = ({
   </motion.div>
 )
 
-// Collection View Component
+// Collection View Component - Mobile Optimized
 const CollectionView = ({
   collectionImages, selectedCollection, purchaseRequests, onDownloadCollection,
   onDownloadWithWatermark, onDownloadPremium, onDownloadPremiumDirect,
@@ -815,36 +832,36 @@ const CollectionView = ({
 }) => (
   <div>
     {collectionImages.length === 0 ? (
-      <div className="text-center py-20">
-        <div className="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl mb-6">
-          <Folder className="w-16 h-16 text-purple-600" />
+      <div className="text-center py-12">
+        <div className="inline-block p-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl mb-4">
+          <Folder className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-800 mb-3">Empty Collection</h3>
-        <p className="text-gray-600 max-w-md mx-auto">This collection doesn't have any images yet. Check back later for updates!</p>
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">Empty Collection</h3>
+        <p className="text-gray-600 text-sm max-w-md mx-auto">No images in this collection yet.</p>
       </div>
     ) : (
       <>
-        <div className="mb-8 p-6 bg-gradient-to-r from-purple-50 to-blue-50 rounded-3xl border border-purple-200 shadow-lg">
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6">
+        <div className="mb-6 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl border border-purple-200 shadow-md">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div>
-              <h3 className="text-2xl font-bold text-gray-900 mb-2">Download Entire Collection</h3>
-              <p className="text-gray-600">
-                Get all {collectionImages.length} premium images from "{selectedCollection?.title}" in one click
+              <h3 className="text-lg font-bold text-gray-900 mb-1">Download Collection</h3>
+              <p className="text-gray-600 text-sm">
+                All {collectionImages.length} images from "{selectedCollection?.title}"
               </p>
             </div>
             <motion.button
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
               onClick={() => onDownloadCollection(selectedCollection)}
-              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-8 py-4 rounded-2xl hover:shadow-xl transition-all font-semibold flex items-center gap-3 whitespace-nowrap shadow-lg"
+              className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center gap-2 text-sm sm:text-base shadow-md"
             >
-              <Download className="w-6 h-6" />
-              Download Collection ({collectionImages.length} images)
+              <Download className="w-4 h-4" />
+              Download ({collectionImages.length})
             </motion.button>
           </div>
         </div>
 
-        <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
           {collectionImages.map((img, index) => {
             const approvedRequest = purchaseRequests.find(
               req => req.image_id === img.id && req.status === 'approved'
@@ -871,24 +888,23 @@ const CollectionView = ({
   </div>
 )
 
-// Individual Images View Component
+// Individual Images View Component - Mobile Optimized
 const IndividualImagesView = ({
   randomImages, purchaseRequests, onDownloadWithWatermark, onDownloadPremium,
   onDownloadPremiumDirect, preventImageActions, getDisplayTitle, getDisplayDescription
 }) => (
   randomImages.length === 0 ? (
-    <div className="text-center py-20">
-      <div className="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl mb-6">
-        <Eye className="w-16 h-16 text-purple-600" />
+    <div className="text-center py-12">
+      <div className="inline-block p-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl mb-4">
+        <Eye className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-800 mb-3">No Images Available</h3>
-      <p className="text-gray-600 max-w-md mx-auto">
-        There are no individual images available at the moment. 
-        Check out our collections for amazing photography content!
+      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">No Images</h3>
+      <p className="text-gray-600 text-sm max-w-md mx-auto">
+        Check collections for photography content!
       </p>
     </div>
   ) : (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-6">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-5">
       {randomImages.map((img, index) => {
         const approvedRequest = purchaseRequests.find(
           req => req.image_id === img.id && req.status === 'approved'
@@ -913,54 +929,54 @@ const IndividualImagesView = ({
   )
 )
 
-// Collections View Component
+// Collections View Component - Mobile Optimized
 const CollectionsView = ({ collections, onCollectionSelect }) => (
   collections.length === 0 ? (
-    <div className="text-center py-20">
-      <div className="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl mb-6">
-        <Folder className="w-16 h-16 text-purple-600" />
+    <div className="text-center py-12">
+      <div className="inline-block p-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl mb-4">
+        <Folder className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
       </div>
-      <h3 className="text-2xl font-bold text-gray-800 mb-3">No Collections Yet</h3>
-      <p className="text-gray-600">Collections will appear here once they're created by the admin.</p>
+      <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">No Collections</h3>
+      <p className="text-gray-600 text-sm">Collections will appear here.</p>
     </div>
   ) : (
-    <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-8">
+    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
       {collections.map((collection, index) => (
         <motion.div
           key={collection.id}
-          initial={{ opacity: 0, y: 20 }}
+          initial={{ opacity: 0, y: 10 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.4, delay: index * 0.1 }}
-          whileHover={{ y: -8, scale: 1.02 }}
-          className="bg-gradient-to-br from-white to-gray-50 rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 cursor-pointer group border border-gray-200"
+          transition={{ duration: 0.3, delay: index * 0.1 }}
+          whileHover={{ y: -4, scale: 1.01 }}
+          className="bg-gradient-to-br from-white to-gray-50 rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 cursor-pointer group border border-gray-200"
           onClick={() => onCollectionSelect(collection)}
         >
-          <div className="h-48 bg-gradient-to-br from-purple-500 to-blue-600 relative overflow-hidden">
+          <div className="h-32 sm:h-40 bg-gradient-to-br from-purple-500 to-blue-600 relative overflow-hidden">
             <div className="absolute inset-0 bg-black/20 group-hover:bg-black/10 transition-all flex items-center justify-center">
-              <Folder className="w-16 h-16 text-white opacity-90 group-hover:scale-110 transition-transform" />
+              <Folder className="w-8 h-8 sm:w-10 sm:h-10 text-white opacity-90 group-hover:scale-105 transition-transform" />
             </div>
-            <div className="absolute top-4 right-4">
-              <div className="bg-white/20 backdrop-blur-sm rounded-full p-2">
-                <Sparkles className="w-5 h-5 text-white" />
+            <div className="absolute top-2 right-2 sm:top-3 sm:right-3">
+              <div className="bg-white/20 backdrop-blur-sm rounded-full p-1 sm:p-2">
+                <Sparkles className="w-3 h-3 sm:w-4 sm:h-4 text-white" />
               </div>
             </div>
           </div>
-          <div className="p-6">
-            <h3 className="font-bold text-xl text-gray-900 mb-3 group-hover:text-purple-700 transition-colors line-clamp-1">
+          <div className="p-4">
+            <h3 className="font-bold text-base sm:text-lg text-gray-900 mb-2 group-hover:text-purple-700 transition-colors line-clamp-1">
               {collection.title}
             </h3>
             {collection.description && (
-              <p className="text-gray-600 text-sm mb-4 line-clamp-2 leading-relaxed">
+              <p className="text-gray-600 text-xs sm:text-sm mb-3 line-clamp-2 leading-relaxed">
                 {collection.description}
               </p>
             )}
             <div className="flex items-center justify-between">
-              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-3 py-1 rounded-full">
-                Curated Collection
+              <span className="text-xs font-medium text-gray-500 bg-gray-100 px-2 py-1 rounded-full">
+                Collection
               </span>
-              <div className="flex items-center gap-2 text-purple-600 group-hover:text-purple-700 transition-colors">
-                <span className="text-sm font-semibold">Explore</span>
-                <ChevronRight className="w-4 h-4 group-hover:translate-x-1 transition-transform" />
+              <div className="flex items-center gap-1 text-purple-600 group-hover:text-purple-700 transition-colors">
+                <span className="text-xs font-semibold">View</span>
+                <ChevronRight className="w-3 h-3 group-hover:translate-x-0.5 transition-transform" />
               </div>
             </div>
           </div>
@@ -970,77 +986,77 @@ const CollectionsView = ({ collections, onCollectionSelect }) => (
   )
 )
 
-// Enhanced Image Card Component
+// Enhanced Image Card Component - Mobile Optimized
 const EnhancedImageCard = ({
   image, index, approvedRequest, onDownloadWithWatermark, onDownloadPremium,
   onDownloadPremiumDirect, preventImageActions, getDisplayTitle, getDisplayDescription
 }) => (
   <motion.div
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
-    transition={{ duration: 0.4, delay: index * 0.1 }}
-    whileHover={{ y: -5, scale: 1.02 }}
-    className="bg-white rounded-3xl overflow-hidden shadow-lg hover:shadow-2xl transition-all duration-300 group border border-gray-200"
+    transition={{ duration: 0.3, delay: index * 0.1 }}
+    whileHover={{ y: -3, scale: 1.01 }}
+    className="bg-white rounded-2xl overflow-hidden shadow-md hover:shadow-lg transition-all duration-300 group border border-gray-200"
   >
-    <div className="h-64 overflow-hidden relative">
+    <div className="h-40 sm:h-48 overflow-hidden relative">
       <img
         src={image.image_url}
         alt={getDisplayTitle(image)}
-        className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110"
+        className="w-full h-full object-cover transition-transform duration-500 group-hover:scale-105"
         onContextMenu={preventImageActions}
         onDragStart={preventImageActions}
       />
-      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-6">
-        <div className="text-white text-sm font-medium bg-black/30 backdrop-blur-sm px-3 py-2 rounded-full">
-          <ImageIcon className="w-4 h-4 inline mr-2" />
+      <div className="absolute inset-0 bg-gradient-to-t from-black/40 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex items-end p-3 sm:p-4">
+        <div className="text-white text-xs font-medium bg-black/30 backdrop-blur-sm px-2 py-1 rounded-full">
+          <ImageIcon className="w-3 h-3 inline mr-1" />
           PLENATHEGRAPHER ©
         </div>
       </div>
-      <div className="absolute top-4 left-4">
-        <div className="bg-white/90 backdrop-blur-sm rounded-full px-3 py-1">
-          <Star className="w-4 h-4 text-yellow-500 inline mr-1" />
+      <div className="absolute top-2 left-2 sm:top-3 sm:left-3">
+        <div className="bg-white/90 backdrop-blur-sm rounded-full px-2 py-1">
+          <Star className="w-3 h-3 text-yellow-500 inline mr-1" />
           <span className="text-xs font-semibold text-gray-800">Premium</span>
         </div>
       </div>
     </div>
-    <div className="p-6 space-y-4">
+    <div className="p-3 sm:p-4 space-y-3">
       <div>
-        <h3 className="font-bold text-lg text-gray-900 mb-2 line-clamp-1">
+        <h3 className="font-bold text-sm sm:text-base text-gray-900 mb-1 line-clamp-1">
           {getDisplayTitle(image)}
         </h3>
-        <p className="text-gray-600 text-sm leading-relaxed line-clamp-2">
+        <p className="text-gray-600 text-xs leading-relaxed line-clamp-2">
           {getDisplayDescription(image)}
         </p>
       </div>
-      <div className="flex flex-col gap-3">
+      <div className="flex flex-col gap-2">
         <motion.button
-          whileHover={{ scale: 1.02 }}
+          whileHover={{ scale: 1.01 }}
           whileTap={{ scale: 0.98 }}
           onClick={() => onDownloadWithWatermark(image)}
-          className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-3"
+          className="bg-gradient-to-r from-purple-600 to-blue-600 text-white py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
         >
-          <Download className="w-5 h-5" />
-          Download with Watermark
+          <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+          Watermark
         </motion.button>
         {approvedRequest ? (
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onDownloadPremiumDirect(image)}
-            className="bg-gradient-to-r from-emerald-500 to-green-500 text-white py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-3"
+            className="bg-gradient-to-r from-emerald-500 to-green-500 text-white py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
-            <Crown className="w-5 h-5" />
-            Download Premium
+            <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
+            Premium
           </motion.button>
         ) : (
           <motion.button
-            whileHover={{ scale: 1.02 }}
+            whileHover={{ scale: 1.01 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onDownloadPremium(image)}
-            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center justify-center gap-3"
+            className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
-            <Lock className="w-5 h-5" />
-            Request Premium
+            <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
+            Request
           </motion.button>
         )}
       </div>
@@ -1048,101 +1064,89 @@ const EnhancedImageCard = ({
   </motion.div>
 )
 
-// Purchases Content Component
+// Purchases Content Component - Mobile Optimized
 const PurchasesContent = ({
   loading, purchaseRequests, allImages, downloadPremiumImage,
   getDisplayTitle, getStatusIcon, getStatusColor
 }) => (
   <motion.div
     key="purchases"
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.4 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.3 }}
   >
-    <div className="flex items-center gap-4 mb-8">
-      <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
-        <ShoppingCart className="w-8 h-8 text-white" />
+    <div className="flex items-center gap-3 mb-6">
+      <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl sm:rounded-2xl shadow-lg">
+        <ShoppingCart className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
       </div>
       <div>
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
-          Purchase History
+        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
+          Purchases
         </h2>
-        <p className="text-gray-600 mt-2">Track your premium download requests and status</p>
+        <p className="text-gray-600 text-xs sm:text-sm">Your download requests</p>
       </div>
     </div>
     
     {loading ? (
-      <div className="flex justify-center items-center py-20">
+      <div className="flex justify-center items-center py-12">
         <motion.div
-          animate={{ rotate: 360, scale: [1, 1.2, 1] }}
+          animate={{ rotate: 360, scale: [1, 1.1, 1] }}
           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="w-16 h-16 border-4 border-purple-500 border-t-transparent rounded-full"
+          className="w-12 h-12 border-4 border-purple-500 border-t-transparent rounded-full"
         />
       </div>
     ) : purchaseRequests.length === 0 ? (
-      <div className="text-center py-20">
-        <div className="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl mb-6">
-          <ShoppingCart className="w-16 h-16 text-purple-600" />
+      <div className="text-center py-12">
+        <div className="inline-block p-4 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl mb-4">
+          <ShoppingCart className="w-10 h-10 sm:w-12 sm:h-12 text-purple-600" />
         </div>
-        <h3 className="text-2xl font-bold text-gray-800 mb-3">No Purchase Requests</h3>
-        <p className="text-gray-600 max-w-md mx-auto">
-          You haven't made any premium download requests yet. 
-          Visit the gallery to request premium access to your favorite images!
+        <h3 className="text-lg sm:text-xl font-bold text-gray-800 mb-2">No Requests</h3>
+        <p className="text-gray-600 text-sm max-w-md mx-auto">
+          Visit gallery to request premium downloads!
         </p>
       </div>
     ) : (
-      <div className="space-y-6">
+      <div className="space-y-4">
         {purchaseRequests.map((request, index) => (
           <motion.div
             key={request.id}
-            initial={{ opacity: 0, y: 20 }}
+            initial={{ opacity: 0, y: 10 }}
             animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.4, delay: index * 0.1 }}
-            className="bg-white rounded-3xl p-6 flex flex-col md:flex-row justify-between items-start md:items-center shadow-lg hover:shadow-xl transition-all gap-6 border border-gray-200"
+            transition={{ duration: 0.3, delay: index * 0.1 }}
+            className="bg-white rounded-2xl p-4 flex flex-col justify-between items-start shadow-md hover:shadow-lg transition-all gap-4 border border-gray-200"
           >
-            <div className="flex-1">
-              <p className="font-bold text-xl text-gray-900 mb-2">
+            <div className="flex-1 w-full">
+              <p className="font-bold text-base sm:text-lg text-gray-900 mb-1 line-clamp-1">
                 {getDisplayTitle(request.image) || 'Premium Image'}
               </p>
-              <p className="text-gray-600">
-                Requested on {request.created_at ? new Date(request.created_at).toLocaleDateString('en-US', { 
-                  weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' 
+              <p className="text-gray-600 text-xs sm:text-sm">
+                Requested {request.created_at ? new Date(request.created_at).toLocaleDateString('en-US', { 
+                  month: 'short', day: 'numeric', year: 'numeric'
                 }) : 'Unknown date'}
               </p>
             </div>
-            <div className="flex items-center gap-4 flex-wrap">
-              <div className="flex items-center gap-3">
+            <div className="flex items-center justify-between w-full gap-3">
+              <div className="flex items-center gap-2">
                 {getStatusIcon(request.status ?? 'pending')}
-                <span className={`px-4 py-2 rounded-full text-sm font-semibold ${getStatusColor(request.status ?? 'pending')}`}>
+                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(request.status ?? 'pending')}`}>
                   {(request.status ?? 'pending').charAt(0).toUpperCase() + (request.status ?? 'pending').slice(1)}
                 </span>
               </div>
               {request.status === 'approved' && (
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
                   <motion.button
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
+                    whileHover={{ scale: 1.02 }}
+                    whileTap={{ scale: 0.98 }}
                     onClick={() => {
                       const image = allImages.find(img => img.id === request.image_id);
                       if (image) downloadPremiumImage(image);
                     }}
-                    className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center gap-3"
+                    className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-3 py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center gap-2 text-xs"
                   >
-                    <Crown className="w-5 h-5" />
-                    Download Premium
+                    <Crown className="w-3 h-3" />
+                    Download
                   </motion.button>
-                  <motion.a
-                    whileHover={{ scale: 1.05 }}
-                    whileTap={{ scale: 0.95 }}
-                    href="https://wa.me/2347060553627"
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-6 py-3 rounded-xl hover:shadow-lg transition-all font-semibold flex items-center gap-3"
-                  >
-                    <MessageCircle className="w-5 h-5" />
-                    Chat Admin
-                  </motion.a>
                 </div>
               )}
             </div>
@@ -1153,106 +1157,105 @@ const PurchasesContent = ({
   </motion.div>
 )
 
-// Hire Photographer Content Component
+// Hire Photographer Content Component - Mobile Optimized
 const HirePhotographerContent = ({
   showHireForm, hireForm, onShowForm, onHideForm, onFormChange, onSubmitForm, user
 }) => (
   <motion.div
     key="hire"
-    initial={{ opacity: 0, y: 20 }}
+    initial={{ opacity: 0, y: 10 }}
     animate={{ opacity: 1, y: 0 }}
-    exit={{ opacity: 0, y: -20 }}
-    transition={{ duration: 0.4 }}
+    exit={{ opacity: 0, y: -10 }}
+    transition={{ duration: 0.3 }}
   >
-    <div className="flex items-center gap-4 mb-8">
-      <div className="p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-2xl shadow-lg">
-        <Camera className="w-8 h-8 text-white" />
+    <div className="flex items-center gap-3 mb-6">
+      <div className="p-2 sm:p-3 bg-gradient-to-r from-purple-500 to-blue-500 rounded-xl sm:rounded-2xl shadow-lg">
+        <Camera className="w-5 h-5 sm:w-6 sm:h-6 text-white" />
       </div>
       <div>
-        <h2 className="text-3xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
-          Hire Our Photographer
+        <h2 className="text-xl sm:text-2xl font-bold bg-gradient-to-r from-gray-800 to-purple-600 bg-clip-text text-transparent">
+          Hire Photographer
         </h2>
-        <p className="text-gray-600 mt-2">Book professional photography services for your special moments</p>
+        <p className="text-gray-600 text-xs sm:text-sm">Book professional services</p>
       </div>
     </div>
 
     {!showHireForm ? (
-      <div className="text-center py-12">
+      <div className="text-center py-8 sm:py-12">
         <div className="max-w-2xl mx-auto">
-          <div className="inline-block p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-3xl mb-8">
-            <Camera className="w-20 h-20 text-purple-600" />
+          <div className="inline-block p-4 sm:p-6 bg-gradient-to-r from-purple-100 to-blue-100 rounded-2xl mb-6">
+            <Camera className="w-12 h-12 sm:w-16 sm:h-16 text-purple-600" />
           </div>
-          <h3 className="text-4xl font-bold text-gray-900 mb-6">
-            Capture Your <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Special Moments</span>
+          <h3 className="text-2xl sm:text-3xl font-bold text-gray-900 mb-4">
+            Capture Your <span className="bg-gradient-to-r from-purple-600 to-blue-600 bg-clip-text text-transparent">Moments</span>
           </h3>
-          <p className="text-xl text-gray-600 mb-8 leading-relaxed">
-            Professional photography services for weddings, events, portraits, and more. 
-            Let us help you preserve your precious memories with stunning imagery.
+          <p className="text-base sm:text-lg text-gray-600 mb-6 leading-relaxed">
+            Professional photography for weddings, events, portraits, and more.
           </p>
           
-          <div className="grid md:grid-cols-3 gap-6 mb-12">
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-purple-200">
-              <div className="w-12 h-12 bg-purple-100 rounded-2xl flex items-center justify-center mb-4">
-                <Star className="w-6 h-6 text-purple-600" />
+          <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-8">
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-purple-200">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-purple-100 rounded-xl flex items-center justify-center mb-3">
+                <Star className="w-4 h-4 sm:w-5 sm:h-5 text-purple-600" />
               </div>
-              <h4 className="font-bold text-gray-900 mb-2">Premium Quality</h4>
-              <p className="text-gray-600 text-sm">High-resolution professional photography</p>
+              <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">Premium Quality</h4>
+              <p className="text-gray-600 text-xs">High-resolution photos</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-blue-200">
-              <div className="w-12 h-12 bg-blue-100 rounded-2xl flex items-center justify-center mb-4">
-                <Zap className="w-6 h-6 text-blue-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-blue-200">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-blue-100 rounded-xl flex items-center justify-center mb-3">
+                <Zap className="w-4 h-4 sm:w-5 sm:h-5 text-blue-600" />
               </div>
-              <h4 className="font-bold text-gray-900 mb-2">Quick Response</h4>
-              <p className="text-gray-600 text-sm">Get a response within hours</p>
+              <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">Quick Response</h4>
+              <p className="text-gray-600 text-xs">Response within hours</p>
             </div>
-            <div className="bg-white/80 backdrop-blur-sm rounded-2xl p-6 border border-cyan-200">
-              <div className="w-12 h-12 bg-cyan-100 rounded-2xl flex items-center justify-center mb-4">
-                <Heart className="w-6 h-6 text-cyan-600" />
+            <div className="bg-white/80 backdrop-blur-sm rounded-xl p-4 border border-cyan-200">
+              <div className="w-8 h-8 sm:w-10 sm:h-10 bg-cyan-100 rounded-xl flex items-center justify-center mb-3">
+                <Heart className="w-4 h-4 sm:w-5 sm:h-5 text-cyan-600" />
               </div>
-              <h4 className="font-bold text-gray-900 mb-2">Custom Packages</h4>
-              <p className="text-gray-600 text-sm">Tailored to your needs and budget</p>
+              <h4 className="font-bold text-gray-900 text-sm sm:text-base mb-1">Custom Packages</h4>
+              <p className="text-gray-600 text-xs">Tailored to your needs</p>
             </div>
           </div>
 
           <motion.button
-            whileHover={{ scale: 1.05 }}
-            whileTap={{ scale: 0.95 }}
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
             onClick={onShowForm}
-            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-12 py-4 rounded-2xl hover:shadow-2xl transition-all font-bold text-lg shadow-lg"
+            className="bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 sm:px-8 py-3 sm:py-4 rounded-xl hover:shadow-lg transition-all font-bold text-sm sm:text-base shadow-md"
           >
-            Start Booking Process
+            Start Booking
           </motion.button>
         </div>
       </div>
     ) : (
       <motion.div
-        initial={{ opacity: 0, y: 20 }}
+        initial={{ opacity: 0, y: 10 }}
         animate={{ opacity: 1, y: 0 }}
         className="max-w-2xl mx-auto"
       >
-        <div className="bg-white/90 backdrop-blur-lg rounded-3xl p-8 shadow-xl border border-purple-200">
-          <div className="flex items-center justify-between mb-8">
-            <h3 className="text-2xl font-bold text-gray-900">Booking Details</h3>
+        <div className="bg-white/90 backdrop-blur-lg rounded-2xl p-4 sm:p-6 shadow-lg border border-purple-200">
+          <div className="flex items-center justify-between mb-6">
+            <h3 className="text-lg sm:text-xl font-bold text-gray-900">Booking Details</h3>
             <motion.button
-              whileHover={{ scale: 1.1 }}
-              whileTap={{ scale: 0.9 }}
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
               onClick={onHideForm}
               className="text-gray-500 hover:text-gray-700 transition-colors"
             >
-              <ArrowLeft className="w-6 h-6" />
+              <ArrowLeft className="w-5 h-5" />
             </motion.button>
           </div>
 
-          <div className="space-y-6">
-            <div className="grid md:grid-cols-2 gap-6">
+          <div className="space-y-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                   Event Type *
                 </label>
                 <select
                   value={hireForm.eventType}
                   onChange={(e) => onFormChange('eventType', e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm"
                 >
                   <option value="">Select event type</option>
                   <option value="wedding">Wedding</option>
@@ -1265,21 +1268,21 @@ const HirePhotographerContent = ({
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                   Event Date *
                 </label>
                 <input
                   type="date"
                   value={hireForm.eventDate}
                   onChange={(e) => onFormChange('eventDate', e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm"
                 />
               </div>
             </div>
 
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                   Budget (₦) *
                 </label>
                 <input
@@ -1287,12 +1290,12 @@ const HirePhotographerContent = ({
                   placeholder="e.g., 50000"
                   value={hireForm.budget}
                   onChange={(e) => onFormChange('budget', e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm"
                 />
               </div>
 
               <div>
-                <label className="block text-sm font-semibold text-gray-700 mb-2">
+                <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                   Location *
                 </label>
                 <input
@@ -1300,63 +1303,63 @@ const HirePhotographerContent = ({
                   placeholder="City or venue"
                   value={hireForm.location}
                   onChange={(e) => onFormChange('location', e.target.value)}
-                  className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                  className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                 Number of Guests
               </label>
               <input
                 type="number"
-                placeholder="Approximate number of guests"
+                placeholder="Approximate guests"
                 value={hireForm.guests}
                 onChange={(e) => onFormChange('guests', e.target.value)}
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all"
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm"
               />
             </div>
 
             <div>
-              <label className="block text-sm font-semibold text-gray-700 mb-2">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-700 mb-1">
                 Special Requests
               </label>
               <textarea
-                placeholder="Any specific requirements or special requests..."
+                placeholder="Any specific requirements..."
                 value={hireForm.specialRequests}
                 onChange={(e) => onFormChange('specialRequests', e.target.value)}
-                rows="4"
-                className="w-full px-4 py-3 rounded-2xl border border-gray-300 focus:border-purple-500 focus:ring-2 focus:ring-purple-200 transition-all resize-none"
+                rows="3"
+                className="w-full px-3 py-2 rounded-xl border border-gray-300 focus:border-purple-500 focus:ring-1 focus:ring-purple-200 transition-all text-sm resize-none"
               />
             </div>
 
-            <div className="bg-purple-50 rounded-2xl p-6 border border-purple-200">
-              <h4 className="font-semibold text-purple-900 mb-2">Contact Information</h4>
-              <p className="text-purple-700 text-sm">
+            <div className="bg-purple-50 rounded-xl p-3 border border-purple-200">
+              <h4 className="font-semibold text-purple-900 text-sm mb-1">Contact Information</h4>
+              <p className="text-purple-700 text-xs">
                 We'll contact you at: <strong>{user?.email}</strong>
               </p>
               {user?.user_metadata?.name && (
-                <p className="text-purple-700 text-sm mt-1">
+                <p className="text-purple-700 text-xs mt-1">
                   Name: <strong>{user.user_metadata.name}</strong>
                 </p>
               )}
             </div>
 
-            <div className="flex gap-4 pt-4">
+            <div className="flex gap-3 pt-2">
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onHideForm}
-                className="flex-1 px-6 py-4 rounded-2xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all font-semibold"
+                className="flex-1 px-4 py-3 rounded-xl border border-gray-300 text-gray-700 hover:bg-gray-50 transition-all font-semibold text-sm"
               >
                 Cancel
               </motion.button>
               <motion.button
-                whileHover={{ scale: 1.02 }}
+                whileHover={{ scale: 1.01 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onSubmitForm}
-                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-6 py-4 rounded-2xl hover:shadow-xl transition-all font-semibold shadow-lg"
+                className="flex-1 bg-gradient-to-r from-purple-600 to-blue-600 text-white px-4 py-3 rounded-xl hover:shadow-md transition-all font-semibold text-sm shadow-sm"
               >
                 Send via WhatsApp
               </motion.button>
