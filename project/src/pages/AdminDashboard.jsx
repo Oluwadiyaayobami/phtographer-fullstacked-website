@@ -16,7 +16,9 @@ import {
   Download,
   Key,
   FolderPlus,
-  Image
+  Image,
+  UserCheck,
+  UserX
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAllPurchaseRequests, updatePurchaseRequestStatus, supabase } from '../utils/supabase';
@@ -30,6 +32,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(false);
 
   const [allUsers, setAllUsers] = useState([]);
+  const [usersLoading, setUsersLoading] = useState(false);
 
   const [settings, setSettings] = useState({
     businessName: 'PLENATHEGRAPHER',
@@ -56,6 +59,10 @@ const AdminDashboard = () => {
   const [newCollectionDescription, setNewCollectionDescription] = useState('');
   const [isCreatingCollection, setIsCreatingCollection] = useState(false);
   const [uploadMode, setUploadMode] = useState('random'); // 'random' or 'collection'
+
+  // Inline confirmation states
+  const [confirmingDelete, setConfirmingDelete] = useState(null);
+  const [confirmingCollectionDelete, setConfirmingCollectionDelete] = useState(null);
 
   // ---------- Download PIN ----------
   useEffect(() => {
@@ -148,8 +155,24 @@ const AdminDashboard = () => {
     const pendingRequests = purchaseRequests.filter((r) => r.status === 'pending').length;
     const approvedRequests = purchaseRequests.filter((r) => r.status === 'approved').length;
     const deniedRequests = purchaseRequests.filter((r) => r.status === 'denied').length;
-    return { totalRequests, pendingRequests, approvedRequests, deniedRequests };
-  }, [purchaseRequests]);
+    
+    // User stats
+    const totalUsers = allUsers.length;
+    const adminUsers = allUsers.filter(u => u.role === 'admin').length;
+    const regularUsers = allUsers.filter(u => u.role === 'user' || !u.role).length;
+    const approvedUsers = allUsers.filter(u => u.approved).length;
+    
+    return { 
+      totalRequests, 
+      pendingRequests, 
+      approvedRequests, 
+      deniedRequests,
+      totalUsers,
+      adminUsers,
+      regularUsers,
+      approvedUsers
+    };
+  }, [purchaseRequests, allUsers]);
 
   const tabs = [
     { id: 'overview', label: 'Overview', icon: Eye },
@@ -190,6 +213,30 @@ const AdminDashboard = () => {
       setImages(data || []);
     } catch (err) {
       toast.error('Failed to fetch images');
+    }
+  };
+
+  // ---------- Users ----------
+  useEffect(() => {
+    // Fetch users when component mounts and when activeTab changes to users
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    setUsersLoading(true);
+    try {
+      const { data, error } = await supabase
+        .from('users')
+        .select('*')
+        .order('created_at', { ascending: false });
+      
+      if (error) throw error;
+      setAllUsers(data || []);
+    } catch (err) {
+      console.error('Error fetching users:', err);
+      toast.error('Failed to fetch users');
+    } finally {
+      setUsersLoading(false);
     }
   };
 
@@ -323,9 +370,8 @@ const AdminDashboard = () => {
     await fetchImages();
   };
 
-  const deleteImage = async (image) => {
-    if (!window.confirm(`Are you sure you want to delete "${image.title}"?`)) return;
-
+  // ---------- Delete Functions with Inline Confirmation ----------
+  const performImageDelete = async (image) => {
     try {
       const url = new URL(image.image_url);
       const pathParts = url.pathname.split('/');
@@ -342,19 +388,18 @@ const AdminDashboard = () => {
       fetchImages();
     } catch (err) {
       toast.error('Failed to delete image');
+    } finally {
+      setConfirmingDelete(null);
     }
   };
 
-  const deleteCollection = async (collectionId) => {
-    if (!window.confirm('Are you sure you want to delete this collection? This will also delete all images in the collection.')) return;
-
+  const performCollectionDelete = async (collectionId) => {
     try {
       // First delete all images in the collection
       const { error: imagesError } = await supabase
         .from('images')
         .delete()
         .eq('collection_id', collectionId);
-
       if (imagesError) throw imagesError;
 
       // Then delete the collection
@@ -362,7 +407,6 @@ const AdminDashboard = () => {
         .from('collections')
         .delete()
         .eq('id', collectionId);
-
       if (collectionError) throw collectionError;
 
       toast.success('Collection deleted successfully');
@@ -370,21 +414,8 @@ const AdminDashboard = () => {
       await fetchImages();
     } catch (err) {
       toast.error('Failed to delete collection');
-    }
-  };
-
-  // ---------- Users ----------
-  useEffect(() => {
-    if (activeTab === 'users' && user) fetchUsers();
-  }, [activeTab, user]);
-
-  const fetchUsers = async () => {
-    try {
-      const { data, error } = await supabase.from('users').select('*').order('created_at', { ascending: false });
-      if (error) throw error;
-      setAllUsers(data || []);
-    } catch (err) {
-      toast.error('Failed to fetch users');
+    } finally {
+      setConfirmingCollectionDelete(null);
     }
   };
 
@@ -555,7 +586,7 @@ const AdminDashboard = () => {
                   </div>
 
                   {/* Additional Stats */}
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                  <div className="grid grid-cols-1 md:grid-cols-4 gap-4 mt-6">
                     <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
                       <div className="flex justify-between items-center">
                         <div>
@@ -581,6 +612,46 @@ const AdminDashboard = () => {
                           <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{collections.length}</p>
                         </div>
                         <FolderPlus className="text-cyan-800 dark:text-cyan-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-indigo-50 to-indigo-100 dark:from-indigo-900/30 dark:to-indigo-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-indigo-800 dark:text-indigo-200 text-sm font-medium">Total Users</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.totalUsers}</p>
+                        </div>
+                        <Users className="text-indigo-800 dark:text-indigo-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* User Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className="bg-gradient-to-br from-green-50 to-green-100 dark:from-green-900/30 dark:to-green-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-green-800 dark:text-green-200 text-sm font-medium">Admin Users</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.adminUsers}</p>
+                        </div>
+                        <UserCheck className="text-green-800 dark:text-green-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-gray-50 to-gray-100 dark:from-gray-900/30 dark:to-gray-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-gray-800 dark:text-gray-200 text-sm font-medium">Regular Users</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.regularUsers}</p>
+                        </div>
+                        <Users className="text-gray-800 dark:text-gray-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-yellow-50 to-yellow-100 dark:from-yellow-900/30 dark:to-yellow-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-yellow-800 dark:text-yellow-200 text-sm font-medium">Approved Users</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{stats.approvedUsers}</p>
+                        </div>
+                        <UserCheck className="text-yellow-800 dark:text-yellow-200 w-6 h-6 md:w-8 md:h-8" />
                       </div>
                     </div>
                   </div>
@@ -778,13 +849,32 @@ const AdminDashboard = () => {
                                     {images.filter(img => img.collection_id === collection.id).length} images
                                   </p>
                                 </div>
-                                <button
-                                  onClick={() => deleteCollection(collection.id)}
-                                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
-                                  title="Delete Collection"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {confirmingCollectionDelete === collection.id ? (
+                                  <div className="flex gap-1 bg-white dark:bg-gray-700 p-1 rounded-lg shadow-lg border">
+                                    <button
+                                      onClick={() => performCollectionDelete(collection.id)}
+                                      className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                      title="Confirm Delete"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmingCollectionDelete(null)}
+                                      className="p-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmingCollectionDelete(collection.id)}
+                                    className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300 transition-colors"
+                                    title="Delete Collection"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -858,13 +948,32 @@ const AdminDashboard = () => {
                                 />
                               </div>
                               <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 mt-2 truncate">{img.title}</p>
-                              <button
-                                onClick={() => deleteImage(img)}
-                                className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"
-                                title="Delete Image"
-                              >
-                                <Trash2 className="w-4 h-4" />
-                              </button>
+                              {confirmingDelete === img.id ? (
+                                <div className="absolute top-2 right-2 flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg border">
+                                  <button
+                                    onClick={() => performImageDelete(img)}
+                                    className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                    title="Confirm Delete"
+                                  >
+                                    <Check className="w-3 h-3" />
+                                  </button>
+                                  <button
+                                    onClick={() => setConfirmingDelete(null)}
+                                    className="p-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                    title="Cancel"
+                                  >
+                                    <X className="w-3 h-3" />
+                                  </button>
+                                </div>
+                              ) : (
+                                <button
+                                  onClick={() => setConfirmingDelete(img.id)}
+                                  className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg transition-colors"
+                                  title="Delete Image"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              )}
                             </div>
                           ))}
                         </div>
@@ -889,13 +998,32 @@ const AdminDashboard = () => {
                                   />
                                 </div>
                                 <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 mt-2 truncate">{img.title}</p>
-                                <button
-                                  onClick={() => deleteImage(img)}
-                                  className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"
-                                  title="Delete Image"
-                                >
-                                  <Trash2 className="w-4 h-4" />
-                                </button>
+                                {confirmingDelete === img.id ? (
+                                  <div className="absolute top-2 right-2 flex gap-1 bg-white dark:bg-gray-800 p-1 rounded-lg shadow-lg border">
+                                    <button
+                                      onClick={() => performImageDelete(img)}
+                                      className="p-1.5 bg-red-600 text-white rounded hover:bg-red-700 transition-colors"
+                                      title="Confirm Delete"
+                                    >
+                                      <Check className="w-3 h-3" />
+                                    </button>
+                                    <button
+                                      onClick={() => setConfirmingDelete(null)}
+                                      className="p-1.5 bg-gray-600 text-white rounded hover:bg-gray-700 transition-colors"
+                                      title="Cancel"
+                                    >
+                                      <X className="w-3 h-3" />
+                                    </button>
+                                  </div>
+                                ) : (
+                                  <button
+                                    onClick={() => setConfirmingDelete(img.id)}
+                                    className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg transition-colors"
+                                    title="Delete Image"
+                                  >
+                                    <Trash2 className="w-4 h-4" />
+                                  </button>
+                                )}
                               </div>
                             ))}
                           </div>
@@ -909,76 +1037,160 @@ const AdminDashboard = () => {
               {/* Users */}
               {activeTab === 'users' && (
                 <div className="space-y-6">
-                  <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">User Management</h2>
-
-                  {/* Mobile: cards */}
-                  <div className="md:hidden space-y-3">
-                    {allUsers.map((u) => (
-                      <div key={u.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
-                        <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{u.name || '—'}</p>
-                        <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{u.email}</p>
-                        <div className="flex items-center justify-between mt-2">
-                          <span className="text-xs px-2 py-1 rounded bg-gray-200 dark:bg-gray-700 dark:text-gray-200">
-                            {u.role || 'user'}
-                          </span>
-                          <span className="text-xs">{u.approved ? 'Approved' : 'Pending'}</span>
-                        </div>
-                        <div className="flex gap-2 mt-3">
-                          <button
-                            onClick={() => updateUserRole(u.id, 'admin')}
-                            className="px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 text-sm"
-                          >
-                            Make Admin
-                          </button>
-                          <button
-                            onClick={() => updateUserRole(u.id, 'user')}
-                            className="px-3 py-1.5 bg-gray-700 text-white rounded hover:bg-gray-800 text-sm"
-                          >
-                            Make User
-                          </button>
-                        </div>
-                      </div>
-                    ))}
+                  <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                    <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">User Management</h2>
+                    <div className="flex items-center gap-4 text-sm">
+                      <span className="bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200 px-3 py-1 rounded-full">
+                        Total: {allUsers.length}
+                      </span>
+                      <span className="bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200 px-3 py-1 rounded-full">
+                        Admins: {allUsers.filter(u => u.role === 'admin').length}
+                      </span>
+                      <span className="bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200 px-3 py-1 rounded-full">
+                        Users: {allUsers.filter(u => u.role === 'user' || !u.role).length}
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Desktop: table */}
-                  <div className="hidden md:block overflow-x-auto">
-                    <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
-                      <thead>
-                        <tr className="bg-gray-100 dark:bg-gray-700/60">
-                          <th className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Name</th>
-                          <th className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Email</th>
-                          <th className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Role</th>
-                          <th className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Status</th>
-                          <th className="px-4 py-2 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Actions</th>
-                        </tr>
-                      </thead>
-                      <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                  {usersLoading ? (
+                    <div className="text-center py-8">
+                      <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-black dark:border-white mx-auto"></div>
+                      <p className="text-gray-600 dark:text-gray-400 mt-2">Loading users...</p>
+                    </div>
+                  ) : (
+                    <>
+                      {/* Mobile: cards */}
+                      <div className="md:hidden space-y-3">
                         {allUsers.map((u) => (
-                          <tr key={u.id} className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-900">
-                            <td className="px-4 py-2 text-sm md:text-base text-gray-900 dark:text-gray-100">{u.name || '—'}</td>
-                            <td className="px-4 py-2 text-sm md:text-base text-gray-800 dark:text-gray-200">{u.email}</td>
-                            <td className="px-4 py-2 text-sm md:text-base">{u.role || 'user'}</td>
-                            <td className="px-4 py-2 text-sm md:text-base">{u.approved ? 'Approved' : 'Pending'}</td>
-                            <td className="px-4 py-2 text-sm md:text-base space-x-2">
+                          <div key={u.id} className="rounded-lg border border-gray-200 dark:border-gray-700 p-4 bg-gray-50 dark:bg-gray-900">
+                            <div className="flex items-start justify-between">
+                              <div className="flex-1">
+                                <p className="text-sm font-semibold text-gray-900 dark:text-gray-100">{u.name || 'No Name'}</p>
+                                <p className="text-sm text-gray-700 dark:text-gray-300 mt-1">{u.email}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                  <span className={`text-xs px-2 py-1 rounded ${
+                                    u.role === 'admin' 
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                  }`}>
+                                    {u.role || 'user'}
+                                  </span>
+                                  <span className={`text-xs px-2 py-1 rounded ${
+                                    u.approved 
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                  }`}>
+                                    {u.approved ? 'Approved' : 'Pending'}
+                                  </span>
+                                </div>
+                                <p className="text-xs text-gray-500 dark:text-gray-400 mt-2">
+                                  Joined: {new Date(u.created_at).toLocaleDateString()}
+                                </p>
+                              </div>
+                            </div>
+                            <div className="flex gap-2 mt-3">
                               <button
                                 onClick={() => updateUserRole(u.id, 'admin')}
-                                className="px-2 py-1 bg-blue-600 text-white rounded hover:bg-blue-700"
+                                disabled={u.role === 'admin'}
+                                className={`px-3 py-1.5 rounded text-sm ${
+                                  u.role === 'admin'
+                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                    : 'bg-blue-600 text-white hover:bg-blue-700'
+                                }`}
                               >
                                 Make Admin
                               </button>
                               <button
                                 onClick={() => updateUserRole(u.id, 'user')}
-                                className="px-2 py-1 bg-gray-700 text-white rounded hover:bg-gray-800"
+                                disabled={u.role === 'user' || !u.role}
+                                className={`px-3 py-1.5 rounded text-sm ${
+                                  u.role === 'user' || !u.role
+                                    ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                    : 'bg-gray-700 text-white hover:bg-gray-800'
+                                }`}
                               >
                                 Make User
                               </button>
-                            </td>
-                          </tr>
+                            </div>
+                          </div>
                         ))}
-                      </tbody>
-                    </table>
-                  </div>
+                      </div>
+
+                      {/* Desktop: table */}
+                      <div className="hidden md:block overflow-x-auto">
+                        <table className="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
+                          <thead>
+                            <tr className="bg-gray-100 dark:bg-gray-700/60">
+                              <th className="px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">User Info</th>
+                              <th className="px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Role</th>
+                              <th className="px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Status</th>
+                              <th className="px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Joined</th>
+                              <th className="px-4 py-3 text-left text-xs md:text-sm font-medium text-gray-700 dark:text-gray-200">Actions</th>
+                            </tr>
+                          </thead>
+                          <tbody className="divide-y divide-gray-200 dark:divide-gray-700">
+                            {allUsers.map((u) => (
+                              <tr key={u.id} className="odd:bg-white even:bg-gray-50 dark:odd:bg-gray-800 dark:even:bg-gray-900">
+                                <td className="px-4 py-3">
+                                  <div>
+                                    <p className="text-sm md:text-base font-medium text-gray-900 dark:text-gray-100">
+                                      {u.name || 'No Name'}
+                                    </p>
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">{u.email}</p>
+                                  </div>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    u.role === 'admin'
+                                      ? 'bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-200'
+                                      : 'bg-gray-100 text-gray-800 dark:bg-gray-900 dark:text-gray-200'
+                                  }`}>
+                                    {u.role || 'user'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3">
+                                  <span className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium ${
+                                    u.approved
+                                      ? 'bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200'
+                                      : 'bg-yellow-100 text-yellow-800 dark:bg-yellow-900 dark:text-yellow-200'
+                                  }`}>
+                                    {u.approved ? 'Approved' : 'Pending'}
+                                  </span>
+                                </td>
+                                <td className="px-4 py-3 text-sm text-gray-600 dark:text-gray-400">
+                                  {new Date(u.created_at).toLocaleDateString()}
+                                </td>
+                                <td className="px-4 py-3 space-x-2">
+                                  <button
+                                    onClick={() => updateUserRole(u.id, 'admin')}
+                                    disabled={u.role === 'admin'}
+                                    className={`px-3 py-1 rounded text-sm ${
+                                      u.role === 'admin'
+                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                        : 'bg-blue-600 text-white hover:bg-blue-700'
+                                    }`}
+                                  >
+                                    Make Admin
+                                  </button>
+                                  <button
+                                    onClick={() => updateUserRole(u.id, 'user')}
+                                    disabled={u.role === 'user' || !u.role}
+                                    className={`px-3 py-1 rounded text-sm ${
+                                      u.role === 'user' || !u.role
+                                        ? 'bg-gray-400 text-gray-200 cursor-not-allowed'
+                                        : 'bg-gray-700 text-white hover:bg-gray-800'
+                                    }`}
+                                  >
+                                    Make User
+                                  </button>
+                                </td>
+                              </tr>
+                            ))}
+                          </tbody>
+                        </table>
+                      </div>
+                    </>
+                  )}
                 </div>
               )}
 
