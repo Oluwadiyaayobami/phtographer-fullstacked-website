@@ -6,17 +6,17 @@ import { useNavigate } from 'react-router-dom';
 
 const images = [
   {
-    url: 'https://images.pexels.com/photos/1264210/pexels-photo-1264210.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/34019526/pexels-photo-34019526.jpeg',
     title: 'CAPTURING',
     subtitle: 'MOMENTS'
   },
   {
-    url: 'https://images.pexels.com/photos/1005414/pexels-photo-1005414.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/1042190/pexels-photo-1042190.jpeg',
     title: 'NATURE',
     subtitle: 'WONDERS'
   },
   {
-    url: 'https://images.pexels.com/photos/210647/pexels-photo-210647.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/169647/pexels-photo-169647.jpeg',
     title: 'CITY',
     subtitle: 'LIGHTS'
   },
@@ -31,17 +31,17 @@ const images = [
     subtitle: 'ANGLES'
   },
   {
-    url: 'https://images.pexels.com/photos/270360/pexels-photo-270360.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/15735448/pexels-photo-15735448.jpeg',
     title: 'WILD',
     subtitle: 'ADVENTURES'
   },
   {
-    url: 'https://images.pexels.com/photos/1629211/pexels-photo-1629211.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/34040546/pexels-photo-34040546.jpeg',
     title: 'CULTURE',
     subtitle: 'STORIES'
   },
   {
-    url: 'https://images.pexels.com/photos/325185/pexels-photo-325185.jpeg?auto=compress&cs=tinysrgb&w=1920&h=1080',
+    url: 'https://images.pexels.com/photos/265722/pexels-photo-265722.jpeg',
     title: 'ELEGANT',
     subtitle: 'WEDDINGS'
   },

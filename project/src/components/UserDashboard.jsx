@@ -298,7 +298,7 @@ Please respond to this booking request at your earliest convenience.`;
       ctx.fillText('©PLENATHEGRAPHER', canvas.width / 2, canvas.height / 2);
       
       ctx.font = 'bold 20px Arial';
-      ctx.fillText('PLENATHEGRAPHER ©', canvas.width - 120, canvas.height - 25);
+      ctx.fillText('PLENATHEGRAPHER © secured by buildfiy ', canvas.width - 220, canvas.height - 25);
 
       const dataURL = canvas.toDataURL('image/jpeg');
       const link = document.createElement('a');
@@ -351,7 +351,7 @@ Please respond to this booking request at your earliest convenience.`;
 
   const getDisplayDescription = (image) => {
     if (image.description) return image.description;
-    return 'Professional photography by PLENATHEGRAPHER';
+    return 'Professional photography by PLENATHEGRAPHER and BUILDYIFY';
   };
 
   const downloadPremiumImage = (image) => {
