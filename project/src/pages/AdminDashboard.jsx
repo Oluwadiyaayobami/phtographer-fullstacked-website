@@ -15,6 +15,8 @@ import {
   X,
   Download,
   Key,
+  FolderPlus,
+  Image
 } from 'lucide-react';
 import { useAuth } from '../context/AuthContext';
 import { getAllPurchaseRequests, updatePurchaseRequestStatus, supabase } from '../utils/supabase';
@@ -49,6 +51,12 @@ const AdminDashboard = () => {
   const [isUpdatingPin, setIsUpdatingPin] = useState(false);
   const [pinInitialized, setPinInitialized] = useState(false);
 
+  // New state for collection management
+  const [newCollectionName, setNewCollectionName] = useState('');
+  const [newCollectionDescription, setNewCollectionDescription] = useState('');
+  const [isCreatingCollection, setIsCreatingCollection] = useState(false);
+  const [uploadMode, setUploadMode] = useState('random'); // 'random' or 'collection'
+
   // ---------- Download PIN ----------
   useEffect(() => {
     fetchDownloadPin();
@@ -59,7 +67,7 @@ const AdminDashboard = () => {
       const { data, error } = await supabase
         .from('download_pin')
         .select('pin')
-        .maybeSingle(); // Use maybeSingle to handle no rows
+        .maybeSingle();
       
       if (error) {
         console.error('Error fetching PIN:', error);
@@ -71,8 +79,7 @@ const AdminDashboard = () => {
         setDownloadPin(data.pin);
         setPinInitialized(true);
       } else {
-        // No PIN exists yet
-        setDownloadPin('1234'); // Set default value
+        setDownloadPin('1234');
         setPinInitialized(false);
       }
     } catch (err) {
@@ -90,15 +97,11 @@ const AdminDashboard = () => {
     setIsUpdatingPin(true);
     
     try {
-      // Use upsert to handle both insert and update
       const { error } = await supabase
         .from('download_pin')
         .upsert({ id: 1, pin: downloadPin }, { onConflict: 'id' });
       
-      if (error) {
-        console.error('Error saving PIN:', error);
-        throw error;
-      }
+      if (error) throw error;
       
       toast.success('PIN saved successfully');
       setPinInitialized(true);
@@ -163,7 +166,7 @@ const AdminDashboard = () => {
 
   const fetchCollections = async () => {
     try {
-      const { data, error } = await supabase.from('collections').select('id, title');
+      const { data, error } = await supabase.from('collections').select('id, title, description').order('created_at', { ascending: false });
       if (error) throw error;
       setCollections(data || []);
       if (data && data.length > 0) setSelectedCollection(data[0].id);
@@ -190,11 +193,47 @@ const AdminDashboard = () => {
     }
   };
 
-  // ---------- Upload ----------
+  // ---------- Create New Collection ----------
+  const createNewCollection = async () => {
+    if (!newCollectionName.trim()) {
+      toast.error('Please enter a collection name');
+      return;
+    }
+
+    setIsCreatingCollection(true);
+    try {
+      const { data, error } = await supabase
+        .from('collections')
+        .insert([
+          {
+            title: newCollectionName,
+            description: newCollectionDescription,
+            created_at: new Date()
+          }
+        ])
+        .select()
+        .single();
+
+      if (error) throw error;
+
+      toast.success('Collection created successfully!');
+      setNewCollectionName('');
+      setNewCollectionDescription('');
+      await fetchCollections();
+      setSelectedCollection(data.id);
+    } catch (err) {
+      toast.error('Failed to create collection');
+    } finally {
+      setIsCreatingCollection(false);
+    }
+  };
+
+  // ---------- Upload Functions ----------
   const handleFileUpload = async (files) => {
     if (!files || files.length === 0) return;
-    if (!selectedCollection) {
-      toast.error('Please select a collection first');
+
+    if (uploadMode === 'collection' && !selectedCollection) {
+      toast.error('Please select or create a collection first');
       return;
     }
 
@@ -205,8 +244,6 @@ const AdminDashboard = () => {
     }));
     setUploadQueue(list);
     setIsUploading(true);
-
-    const folder = `collection_${selectedCollection}/${Date.now()}`;
 
     for (let i = 0; i < files.length; i++) {
       const file = files[i];
@@ -223,6 +260,11 @@ const AdminDashboard = () => {
             prev.map((it, idx) => (idx === i ? { ...it, progress: tick } : it))
           );
         }, 180);
+
+        // Determine folder based on upload mode
+        const folder = uploadMode === 'random' 
+          ? `random_images/${Date.now()}`
+          : `collection_${selectedCollection}/${Date.now()}`;
 
         const { error: uploadError } = await supabase.storage
           .from('images')
@@ -244,14 +286,18 @@ const AdminDashboard = () => {
 
         const publicUrl = urlData?.publicUrl;
 
-        const { error: dbError } = await supabase.from('images').insert([
-          {
-            title: file.name,
-            image_url: publicUrl,
-            collection_id: selectedCollection,
-            created_at: new Date(),
-          },
-        ]);
+        // Insert into images table with or without collection_id
+        const imageData = {
+          title: file.name,
+          image_url: publicUrl,
+          created_at: new Date(),
+        };
+
+        if (uploadMode === 'collection') {
+          imageData.collection_id = selectedCollection;
+        }
+
+        const { error: dbError } = await supabase.from('images').insert([imageData]);
 
         if (dbError) {
           setUploadQueue((prev) =>
@@ -296,6 +342,34 @@ const AdminDashboard = () => {
       fetchImages();
     } catch (err) {
       toast.error('Failed to delete image');
+    }
+  };
+
+  const deleteCollection = async (collectionId) => {
+    if (!window.confirm('Are you sure you want to delete this collection? This will also delete all images in the collection.')) return;
+
+    try {
+      // First delete all images in the collection
+      const { error: imagesError } = await supabase
+        .from('images')
+        .delete()
+        .eq('collection_id', collectionId);
+
+      if (imagesError) throw imagesError;
+
+      // Then delete the collection
+      const { error: collectionError } = await supabase
+        .from('collections')
+        .delete()
+        .eq('id', collectionId);
+
+      if (collectionError) throw collectionError;
+
+      toast.success('Collection deleted successfully');
+      await fetchCollections();
+      await fetchImages();
+    } catch (err) {
+      toast.error('Failed to delete collection');
     }
   };
 
@@ -344,6 +418,7 @@ const AdminDashboard = () => {
   };
 
   // ---------- Helpers ----------
+  const randomImages = images.filter((img) => !img.collection_id);
   const imagesByCollection = collections.map((col) => ({
     ...col,
     images: images.filter((img) => img.collection_id === col.id),
@@ -424,6 +499,7 @@ const AdminDashboard = () => {
           {/* Content */}
           <motion.div initial={{ opacity: 0, x: 20 }} animate={{ opacity: 1, x: 0 }} className="lg:w-3/4">
             <div className="bg-white dark:bg-gray-800 rounded-lg shadow-lg p-4 md:p-6 space-y-6 min-h-[70vh]">
+              
               {/* Overview */}
               {activeTab === 'overview' && (
                 <div className="space-y-6">
@@ -476,6 +552,37 @@ const AdminDashboard = () => {
                         </div>
                       );
                     })}
+                  </div>
+
+                  {/* Additional Stats */}
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
+                    <div className="bg-gradient-to-br from-purple-50 to-purple-100 dark:from-purple-900/30 dark:to-purple-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-purple-800 dark:text-purple-200 text-sm font-medium">Total Images</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{images.length}</p>
+                        </div>
+                        <Image className="text-purple-800 dark:text-purple-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-orange-50 to-orange-100 dark:from-orange-900/30 dark:to-orange-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-orange-800 dark:text-orange-200 text-sm font-medium">Random Images</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{randomImages.length}</p>
+                        </div>
+                        <Image className="text-orange-800 dark:text-orange-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
+                    <div className="bg-gradient-to-br from-cyan-50 to-cyan-100 dark:from-cyan-900/30 dark:to-cyan-800/20 border border-gray-100 dark:border-gray-700 rounded-xl p-4 md:p-6">
+                      <div className="flex justify-between items-center">
+                        <div>
+                          <p className="text-cyan-800 dark:text-cyan-200 text-sm font-medium">Collections</p>
+                          <p className="text-2xl md:text-3xl font-bold text-gray-900 dark:text-gray-100">{collections.length}</p>
+                        </div>
+                        <FolderPlus className="text-cyan-800 dark:text-cyan-200 w-6 h-6 md:w-8 md:h-8" />
+                      </div>
+                    </div>
                   </div>
                 </div>
               )}
@@ -574,29 +681,132 @@ const AdminDashboard = () => {
                 <div className="space-y-6">
                   <h2 className="text-xl md:text-2xl font-bold text-gray-900 dark:text-gray-100">Upload Content</h2>
 
-                  {/* Select Collection */}
-                  <div className="mb-4">
-                    <label className="block mb-2 font-medium text-gray-800 dark:text-gray-200">Select Collection</label>
-                    <select
-                      value={selectedCollection || ''}
-                      onChange={(e) => setSelectedCollection(e.target.value)}
-                      className="border rounded p-2 w-full bg-white dark:bg-gray-900 dark:border-gray-700 dark:text-gray-100"
-                    >
-                      {collections.map((c) => (
-                        <option key={c.id} value={c.id}>
-                          {c.title}
-                        </option>
-                      ))}
-                    </select>
+                  {/* Upload Mode Selection */}
+                  <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 md:p-6">
+                    <h3 className="text-lg font-semibold mb-4 text-gray-900 dark:text-gray-100">Upload Type</h3>
+                    <div className="flex flex-col sm:flex-row gap-4">
+                      <button
+                        onClick={() => setUploadMode('random')}
+                        className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
+                          uploadMode === 'random'
+                            ? 'border-black bg-black text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900'
+                            : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <Image className="w-8 h-8 mx-auto mb-2" />
+                        <h4 className="font-semibold">Random Images</h4>
+                        <p className="text-sm mt-1">Upload individual images without collections</p>
+                      </button>
+                      <button
+                        onClick={() => setUploadMode('collection')}
+                        className={`flex-1 p-4 border-2 rounded-lg text-center transition-colors ${
+                          uploadMode === 'collection'
+                            ? 'border-black bg-black text-white dark:border-gray-100 dark:bg-gray-100 dark:text-gray-900'
+                            : 'border-gray-300 bg-gray-50 text-gray-700 hover:bg-gray-100 dark:border-gray-600 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700'
+                        }`}
+                      >
+                        <FolderPlus className="w-8 h-8 mx-auto mb-2" />
+                        <h4 className="font-semibold">Collection Images</h4>
+                        <p className="text-sm mt-1">Upload images to organized collections</p>
+                      </button>
+                    </div>
                   </div>
+
+                  {/* Collection Management (only for collection mode) */}
+                  {uploadMode === 'collection' && (
+                    <div className="bg-white dark:bg-gray-900 border border-gray-200 dark:border-gray-700 rounded-lg p-4 md:p-6 space-y-4">
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100">Collection Management</h3>
+                      
+                      {/* Create New Collection */}
+                      <div className="space-y-3">
+                        <h4 className="font-medium text-gray-800 dark:text-gray-200">Create New Collection</h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                          <input
+                            type="text"
+                            value={newCollectionName}
+                            onChange={(e) => setNewCollectionName(e.target.value)}
+                            placeholder="Collection Name"
+                            className="border rounded p-2 w-full bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                          />
+                          <input
+                            type="text"
+                            value={newCollectionDescription}
+                            onChange={(e) => setNewCollectionDescription(e.target.value)}
+                            placeholder="Description (optional)"
+                            className="border rounded p-2 w-full bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                          />
+                        </div>
+                        <button
+                          onClick={createNewCollection}
+                          disabled={isCreatingCollection}
+                          className="bg-black text-white px-4 py-2 rounded hover:bg-gray-800 disabled:bg-gray-400 dark:bg-gray-100 dark:text-gray-900 dark:hover:bg-gray-200"
+                        >
+                          {isCreatingCollection ? 'Creating...' : 'Create Collection'}
+                        </button>
+                      </div>
+
+                      {/* Select Existing Collection */}
+                      <div>
+                        <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Select Existing Collection</h4>
+                        <select
+                          value={selectedCollection || ''}
+                          onChange={(e) => setSelectedCollection(e.target.value)}
+                          className="border rounded p-2 w-full bg-white dark:bg-gray-800 dark:border-gray-700 dark:text-gray-100"
+                        >
+                          <option value="">Select a collection</option>
+                          {collections.map((c) => (
+                            <option key={c.id} value={c.id}>
+                              {c.title}
+                            </option>
+                          ))}
+                        </select>
+                      </div>
+
+                      {/* Collections List */}
+                      {collections.length > 0 && (
+                        <div>
+                          <h4 className="font-medium text-gray-800 dark:text-gray-200 mb-2">Your Collections</h4>
+                          <div className="space-y-2">
+                            {collections.map((collection) => (
+                              <div key={collection.id} className="flex justify-between items-center p-3 border rounded bg-gray-50 dark:bg-gray-800 dark:border-gray-700">
+                                <div>
+                                  <p className="font-medium text-gray-900 dark:text-gray-100">{collection.title}</p>
+                                  {collection.description && (
+                                    <p className="text-sm text-gray-600 dark:text-gray-400">{collection.description}</p>
+                                  )}
+                                  <p className="text-xs text-gray-500 dark:text-gray-500">
+                                    {images.filter(img => img.collection_id === collection.id).length} images
+                                  </p>
+                                </div>
+                                <button
+                                  onClick={() => deleteCollection(collection.id)}
+                                  className="text-red-600 hover:text-red-800 dark:text-red-400 dark:hover:text-red-300"
+                                  title="Delete Collection"
+                                >
+                                  <Trash2 className="w-4 h-4" />
+                                </button>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  )}
 
                   {/* Uploader */}
                   <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-900">
                     <input type="file" multiple onChange={(e) => handleFileUpload(e.target.files)} className="hidden" id="fileInput" />
                     <label htmlFor="fileInput" className="cursor-pointer block">
                       <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">Upload Files</h3>
-                      <p className="text-gray-600 dark:text-gray-300 mb-4">Click to browse files</p>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
+                        {uploadMode === 'random' ? 'Upload Random Images' : 'Upload to Collection'}
+                      </h3>
+                      <p className="text-gray-600 dark:text-gray-300 mb-4">
+                        {uploadMode === 'random' 
+                          ? 'Upload individual images that will appear in the random images section'
+                          : 'Upload images to the selected collection'
+                        }
+                      </p>
                       <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-md">
                         Choose Files
                       </button>
@@ -606,6 +816,7 @@ const AdminDashboard = () => {
                   {/* Upload queue with progress */}
                   {uploadQueue.length > 0 && (
                     <div className="space-y-3">
+                      <h4 className="font-semibold text-gray-900 dark:text-gray-100">Upload Progress</h4>
                       {uploadQueue.map((item, idx) => (
                         <div key={idx} className="border rounded-lg p-3 bg-white dark:bg-gray-900 dark:border-gray-700">
                           <div className="flex items-center justify-between">
@@ -630,13 +841,42 @@ const AdminDashboard = () => {
                     </div>
                   )}
 
-                  {/* Gallery */}
+                  {/* Gallery Display */}
                   <div className="space-y-6">
-                    {imagesByCollection.map((col) => (
+                    {/* Random Images Section */}
+                    {uploadMode === 'random' && randomImages.length > 0 && (
+                      <div>
+                        <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">Random Images</h3>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                          {randomImages.map((img) => (
+                            <div key={img.id} className="group border rounded-lg p-2 relative overflow-hidden bg-white dark:bg-gray-900 dark:border-gray-700">
+                              <div className="aspect-[4/3] overflow-hidden rounded">
+                                <img
+                                  src={img.image_url}
+                                  alt={img.title}
+                                  className="w-full h-full object-cover transform transition-transform duration-300 group-hover:scale-105"
+                                />
+                              </div>
+                              <p className="text-xs md:text-sm text-gray-700 dark:text-gray-300 mt-2 truncate">{img.title}</p>
+                              <button
+                                onClick={() => deleteImage(img)}
+                                className="absolute top-2 right-2 bg-red-600 text-white p-2 rounded-full hover:bg-red-700 shadow-lg"
+                                title="Delete Image"
+                              >
+                                <Trash2 className="w-4 h-4" />
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Collections Images Section */}
+                    {uploadMode === 'collection' && imagesByCollection.map((col) => (
                       <div key={col.id}>
                         <h3 className="text-lg md:text-xl font-bold mb-3 text-gray-900 dark:text-gray-100">{col.title}</h3>
                         {col.images.length === 0 ? (
-                          <p className="text-gray-500 dark:text-gray-400">No images yet</p>
+                          <p className="text-gray-500 dark:text-gray-400">No images yet in this collection</p>
                         ) : (
                           <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
                             {col.images.map((img) => (

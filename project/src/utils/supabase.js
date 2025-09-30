@@ -66,6 +66,41 @@ export const getCollections = async () => {
   return { data, error };
 };
 
+// Create new collection
+export const createCollection = async (title, description = "") => {
+  const { data, error } = await supabase
+    .from("collections")
+    .insert([
+      {
+        title,
+        description,
+        created_at: new Date()
+      }
+    ])
+    .select()
+    .single();
+  return { data, error };
+};
+
+// Delete collection and its images
+export const deleteCollection = async (collectionId) => {
+  // First delete all images in the collection
+  const { error: imagesError } = await supabase
+    .from("images")
+    .delete()
+    .eq("collection_id", collectionId);
+
+  if (imagesError) return { error: imagesError };
+
+  // Then delete the collection
+  const { error: collectionError } = await supabase
+    .from("collections")
+    .delete()
+    .eq("id", collectionId);
+
+  return { error: collectionError };
+};
+
 // helper to normalize old filenames into full URLs
 const normalizeImageUrl = (path) => {
   if (!path) return null;
@@ -79,6 +114,24 @@ export const getCollectionImages = async (collectionId) => {
     .from("images")
     .select("id, title, image_url, collection_id, created_at")
     .eq("collection_id", collectionId)
+    .order("created_at", { ascending: false });
+
+  if (error) return { data: null, error };
+
+  const normalized = data.map((img) => ({
+    ...img,
+    url: normalizeImageUrl(img.image_url),
+  }));
+
+  return { data: normalized, error: null };
+};
+
+// Get random images (images without collection)
+export const getRandomImages = async () => {
+  const { data, error } = await supabase
+    .from("images")
+    .select("id, title, image_url, collection_id, created_at")
+    .is("collection_id", null)
     .order("created_at", { ascending: false });
 
   if (error) return { data: null, error };
@@ -121,10 +174,19 @@ export const getAllImages = async () => {
 
   const normalized = data.map((img) => ({
     ...img,
-    image_url: normalizeImageUrl(img.image_url), // 🔥 always overwrite here
+    image_url: normalizeImageUrl(img.image_url),
   }));
 
   return { data: normalized, error: null };
+};
+
+// Delete single image
+export const deleteImage = async (imageId) => {
+  const { error } = await supabase
+    .from("images")
+    .delete()
+    .eq("id", imageId);
+  return { error };
 };
 
 export const verifyCollectionPin = async (collectionId, pin) => {
@@ -224,29 +286,96 @@ export const isAdmin = async (userId) => {
   return data?.role === "admin";
 };
 
-// Get all purchase requests for admin
-export const getAllPurchaseRequests = async () => {
+// Get all users for admin
+export const getAllUsers = async () => {
   const { data, error } = await supabase
-    .from("purchase_requests")
-    .select(
-      `
-      *,
-      users (name, email),
-      images (id, title, image_url, collections (title))
-    `
-    )
+    .from("users")
+    .select("*")
     .order("created_at", { ascending: false });
+  return { data, error };
+};
 
-  if (error) return { data: null, error };
+// Update user role
+export const updateUserRole = async (userId, role) => {
+  const { data, error } = await supabase
+    .from("users")
+    .update({ role })
+    .eq("id", userId);
+  return { data, error };
+};
 
-  const normalized = data.map((req) => ({
-    ...req,
-    images: req.images
-      ? { ...req.images, url: normalizeImageUrl(req.images.image_url) }
-      : null,
-  }));
+// Get all purchase requests for admin - FIXED VERSION
+export const getAllPurchaseRequests = async () => {
+  try {
+    // First, get all purchase requests with user data
+    const { data: requestsData, error: requestsError } = await supabase
+      .from("purchase_requests")
+      .select(`
+        *,
+        users (
+          name,
+          email
+        )
+      `)
+      .order("created_at", { ascending: false });
 
-  return { data: normalized, error: null };
+    if (requestsError) {
+      console.error("Error fetching purchase requests:", requestsError);
+      return { data: null, error: requestsError };
+    }
+
+    if (!requestsData || requestsData.length === 0) {
+      return { data: [], error: null };
+    }
+
+    // Get all image IDs from the requests
+    const imageIds = requestsData.map(req => req.image_id).filter(id => id);
+
+    // Fetch images with their collections separately
+    const { data: imagesData, error: imagesError } = await supabase
+      .from("images")
+      .select(`
+        id,
+        title,
+        image_url,
+        collection_id,
+        collections (
+          title
+        )
+      `)
+      .in("id", imageIds);
+
+    if (imagesError) {
+      console.error("Error fetching images:", imagesError);
+      // Continue with requests data even if images fail
+    }
+
+    // Combine the data
+    const normalized = requestsData.map((req) => {
+      const image = imagesData?.find(img => img.id === req.image_id);
+      
+      return {
+        id: req.id,
+        status: req.status,
+        created_at: req.created_at,
+        user_email: req.users?.email || 'Unknown User',
+        user_name: req.users?.name || 'Unknown',
+        image: image
+          ? {
+              id: image.id,
+              title: image.title,
+              collection_title: image.collections?.title || 'No Collection',
+              image_url: normalizeImageUrl(image.image_url),
+            }
+          : null,
+      };
+    });
+
+    return { data: normalized, error: null };
+  } catch (err) {
+    console.error("Exception in getAllPurchaseRequests:", err);
+    return { data: null, error: err };
+  }
 };
 
 // Update request status
@@ -255,6 +384,27 @@ export const updatePurchaseRequestStatus = async (requestId, status) => {
     .from("purchase_requests")
     .update({ status })
     .eq("id", requestId);
+  return { data, error };
+};
+
+//
+// ---------------- SETTINGS ----------------
+//
+
+// Get settings
+export const getSettings = async () => {
+  const { data, error } = await supabase
+    .from("settings")
+    .select("*")
+    .single();
+  return { data, error };
+};
+
+// Update settings
+export const updateSettings = async (settings) => {
+  const { data, error } = await supabase
+    .from("settings")
+    .upsert(settings);
   return { data, error };
 };
 
@@ -319,6 +469,59 @@ export const saveImageMetadata = async (
   }
 };
 
+// Upload image with optional collection
+export const uploadImageWithMetadata = async (file, title, collectionId = null) => {
+  try {
+    // Determine folder based on whether it's a collection or random image
+    const folder = collectionId 
+      ? `collection_${collectionId}/${Date.now()}`
+      : `random_images/${Date.now()}`;
+
+    // 1. Upload file to storage
+    const { error: uploadError } = await supabase.storage
+      .from("images")
+      .upload(`${folder}/${file.name}`, file);
+
+    if (uploadError) throw uploadError;
+
+    // 2. Get public URL
+    const { data: urlData } = supabase.storage
+      .from("images")
+      .getPublicUrl(`${folder}/${file.name}`);
+
+    const publicUrl = urlData?.publicUrl;
+
+    // 3. Insert metadata into images table
+    const imageData = {
+      title: title || file.name,
+      image_url: publicUrl,
+      created_at: new Date(),
+    };
+
+    if (collectionId) {
+      imageData.collection_id = collectionId;
+    }
+
+    const { data, error } = await supabase
+      .from("images")
+      .insert([imageData])
+      .select();
+
+    if (error) throw error;
+    return { data, error: null };
+  } catch (err) {
+    return { data: null, error: err };
+  }
+};
+
+// Delete file from storage
+export const deleteFileFromStorage = async (filePath) => {
+  const { error } = await supabase.storage
+    .from("images")
+    .remove([filePath]);
+  return { error };
+};
+
 // Create signed URL for file access
 export const createSignedUrl = async (imagePath, expires = 60) => {
   const { data, error } = await supabase.storage
@@ -326,6 +529,7 @@ export const createSignedUrl = async (imagePath, expires = 60) => {
     .createSignedUrl(imagePath, expires);
   return { data, error };
 };
+
 //
 // ---------------- DOWNLOAD PIN ----------------
 //
@@ -333,9 +537,9 @@ export const createSignedUrl = async (imagePath, expires = 60) => {
 // Fetch the current download PIN
 export const getDownloadPin = async () => {
   const { data, error } = await supabase
-    .from("download_pin")  // your table is named download_pin
+    .from("download_pin")
     .select("pin")
-    .single(); // assuming you have only one row storing the pin
+    .single();
   return { pin: data?.pin || null, error };
 };
 
@@ -344,6 +548,6 @@ export const updateDownloadPin = async (newPin) => {
   const { data, error } = await supabase
     .from("download_pin")
     .update({ pin: newPin })
-    .eq("id", 1); // assuming single row has id = 1
+    .eq("id", 1);
   return { data, error };
 };
