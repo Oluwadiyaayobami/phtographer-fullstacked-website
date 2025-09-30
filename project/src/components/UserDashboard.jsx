@@ -432,65 +432,65 @@ Please respond to this booking request at your earliest convenience.`;
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-blue-50 to-cyan-50 py-4 sm:py-8">
       <div className="max-w-7xl mx-auto px-3 sm:px-6 lg:px-8">
         
-        {/* Enhanced Header - Mobile Optimized */}
-        <motion.div
-          initial={{ opacity: 0, y: -20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.6 }}
-          className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 mb-6 sm:mb-8 overflow-hidden"
-        >
-          <div className="absolute inset-0 bg-black/10"></div>
-          <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 sm:-translate-y-16 sm:translate-x-16"></div>
-          <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full translate-y-8 -translate-x-8 sm:translate-y-12 sm:-translate-x-12"></div>
+      {/* Enhanced Header - Mobile Optimized */}
+      <motion.div
+        initial={{ opacity: 0, y: -20 }}
+        animate={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.6 }}
+        className="relative bg-gradient-to-r from-purple-600 via-blue-600 to-cyan-600 text-white rounded-2xl sm:rounded-3xl shadow-xl p-4 sm:p-6 mt-8 mb-6 sm:mt-12 sm:mb-8 overflow-hidden"
+      >
+        <div className="absolute inset-0 bg-black/10"></div>
+        <div className="absolute top-0 right-0 w-20 h-20 sm:w-32 sm:h-32 bg-white/10 rounded-full -translate-y-8 translate-x-8 sm:-translate-y-16 sm:translate-x-16"></div>
+        <div className="absolute bottom-0 left-0 w-16 h-16 sm:w-24 sm:h-24 bg-white/10 rounded-full translate-y-8 -translate-x-8 sm:translate-y-12 sm:-translate-x-12"></div>
 
-          <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-            <div className="flex items-center">
-              <div className="bg-white/20 p-2 sm:p-3 rounded-xl sm:rounded-2xl mr-3 sm:mr-4 backdrop-blur-sm">
-                <User className="w-5 h-5 sm:w-6 sm:h-6" />
-              </div>
-              <div>
-                <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
-                  Welcome, {user?.user_metadata?.name || user?.email}!
-                </h1>
-                <p className="mt-1 text-purple-100 text-xs sm:text-sm">
-                  Your creative journey continues
-                </p>
-              </div>
+        <div className="relative flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+          <div className="flex items-center">
+            <div className="bg-white/20 p-2 sm:p-3 rounded-xl sm:rounded-2xl mr-3 sm:mr-4 backdrop-blur-sm">
+              <User className="w-5 h-5 sm:w-6 sm:h-6" />
             </div>
-            
-            <div className="flex items-center gap-3 self-end sm:self-auto">
-              {/* Mobile Menu Button */}
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
-                className="sm:hidden bg-white/20 backdrop-blur-sm p-2 rounded-xl border border-white/20"
-              >
-                {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-              </motion.button>
-              
-              <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.95 }}
-                onClick={handleSignOut}
-                className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg border border-white/20 text-xs sm:text-sm"
-              >
-                <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
-                <span className="hidden xs:inline">Sign Out</span>
-              </motion.button>
+            <div>
+              <h1 className="text-lg sm:text-xl md:text-2xl font-bold bg-gradient-to-r from-white to-cyan-100 bg-clip-text text-transparent">
+                Welcome, {user?.user_metadata?.name || user?.email}!
+              </h1>
+              <p className="mt-1 text-purple-100 text-xs sm:text-sm">
+                Your creative journey continues
+              </p>
             </div>
           </div>
-        </motion.div>
+          
+          <div className="flex items-center gap-3 self-end sm:self-auto">
+            {/* Mobile Menu Button */}
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="sm:hidden bg-white/20 backdrop-blur-sm p-2 rounded-xl border border-white/20"
+            >
+              {mobileMenuOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
+            </motion.button>
+            
+            <motion.button
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={handleSignOut}
+              className="flex items-center space-x-2 bg-white/20 backdrop-blur-sm hover:bg-white/30 transition-all px-3 py-2 sm:px-4 sm:py-3 rounded-xl sm:rounded-2xl font-semibold shadow-lg border border-white/20 text-xs sm:text-sm"
+            >
+              <LogOut className="w-3 h-3 sm:w-4 sm:h-4" />
+              <span className="hidden xs:inline">Sign Out</span>
+            </motion.button>
+          </div>
+        </div>
+      </motion.div>
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
-          {/* Enhanced Sidebar - Mobile Optimized */}
+          {/* Enhanced Sidebar - Mobile Optimized - REMOVED STICKY */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
             transition={{ duration: 0.5, delay: 0.2 }}
             className={`lg:w-1/4 ${mobileMenuOpen ? 'block' : 'hidden'} sm:block`}
           >
-            <div className="bg-white/80 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 sticky top-4 border border-white/20">
+            <div className="bg-white/80 backdrop-blur-lg rounded-2xl sm:rounded-3xl shadow-lg p-4 sm:p-6 border border-white/20">
               <nav className="flex flex-col gap-2 sm:gap-3">
                 {tabs.map((tab, index) => {
                   const Icon = tab.icon
