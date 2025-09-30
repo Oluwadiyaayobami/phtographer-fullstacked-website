@@ -4,7 +4,8 @@ import {
   User, ShoppingCart, LogOut,
   Eye, Clock, CheckCircle, XCircle, Download, ChevronRight,
   Lock, ImageIcon, Crown, Folder, ArrowLeft, Grid, List,
-  Camera, MessageCircle, Star, Zap, Sparkles, Heart, Menu, X
+  Camera, MessageCircle, Star, Zap, Sparkles, Heart, Menu, X,
+  Mail, MessageSquare
 } from 'lucide-react'
 import { useAuth } from '../context/AuthContext'
 import {
@@ -42,6 +43,12 @@ const UserDashboard = () => {
   const [viewMode, setViewMode] = useState('gallery')
   const [collectionView, setCollectionView] = useState(false)
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false)
+  
+  // Admin contact information
+  const [adminContact, setAdminContact] = useState({
+    whatsapp: '+2347060553627',
+    email: 'admin@plenathegrapher.com'
+  })
   
   // Hire Photographer Form State
   const [showHireForm, setShowHireForm] = useState(false)
@@ -125,7 +132,7 @@ const UserDashboard = () => {
       if (error) throw error;
       setCollectionImages(data || []);
       setCollectionView(true);
-      setMobileMenuOpen(false); // Close mobile menu when navigating
+      setMobileMenuOpen(false);
     } catch (error) {
       console.error('Error fetching collection images:', error);
       toast.error('Failed to load collection images');
@@ -227,6 +234,56 @@ const UserDashboard = () => {
       setDownloadType('');
     }
   };
+
+  // MESSAGE ADMIN FUNCTIONALITY
+  const handleMessageAdmin = (subject = '', message = '') => {
+    const defaultMessage = `Hello PLENATHEGRAPHER Admin,\n\nI need assistance with my purchase/download.\n\nUser: ${user?.email}\nName: ${user?.user_metadata?.name || 'Not specified'}\n\nThank you!`;
+    
+    const finalMessage = message || defaultMessage
+    const encodedMessage = encodeURIComponent(finalMessage)
+    const whatsappUrl = `https://wa.me/${adminContact.whatsapp}?text=${encodedMessage}`
+    
+    window.open(whatsappUrl, '_blank')
+    toast.success('Opening WhatsApp to message admin!')
+  }
+
+  // ENHANCED DOWNLOAD FOR APPROVED REQUESTS
+  const handleDownloadApproved = (image) => {
+    if (!image) {
+      toast.error('Image not found')
+      return
+    }
+    
+    try {
+      const link = document.createElement('a')
+      link.href = image.image_url
+      link.download = `plenathegrapher-premium-${getImageTitle(image)}`
+      link.target = '_blank'
+      
+      link.addEventListener('click', () => {
+        setTimeout(() => {
+          toast.success('Premium download started!')
+        }, 1000)
+      })
+      
+      document.body.appendChild(link)
+      link.click()
+      document.body.removeChild(link)
+      
+    } catch (error) {
+      console.error('Download error:', error)
+      toast.error('Failed to download. Please message admin for assistance.')
+      
+      setTimeout(() => {
+        if (window.confirm('Download failed. Would you like to message admin for assistance?')) {
+          handleMessageAdmin(
+            'Download Assistance Needed',
+            `Hello PLENATHEGRAPHER Admin,\n\nI'm having trouble downloading my approved premium image:\n\n- Image: ${getDisplayTitle(image)}\n- User: ${user?.email}\n- Name: ${user?.user_metadata?.name || 'Not specified'}\n\nCould you please assist? Thank you!`
+          )
+        }
+      }, 2000)
+    }
+  }
 
   // HIRE PHOTOGRAPHER FUNCTIONS
   const handleHireFormChange = (field, value) => {
@@ -483,7 +540,7 @@ Please respond to this booking request at your earliest convenience.`;
       </motion.div>
 
         <div className="flex flex-col lg:flex-row gap-4 sm:gap-6 lg:gap-8">
-          {/* Enhanced Sidebar - Mobile Optimized - REMOVED STICKY */}
+          {/* Enhanced Sidebar - Mobile Optimized */}
           <motion.div
             initial={{ opacity: 0, x: -20 }}
             animate={{ opacity: 1, x: 0 }}
@@ -635,7 +692,7 @@ Please respond to this booking request at your earliest convenience.`;
                     }}
                     onDownloadWithWatermark={handleDownloadWithWatermark}
                     onDownloadPremium={handleDownloadPremium}
-                    onDownloadPremiumDirect={downloadPremiumImage}
+                    onDownloadPremiumDirect={handleDownloadApproved}
                     onDownloadCollection={handleDownloadCollection}
                     preventImageActions={preventImageActions}
                     getDisplayTitle={getDisplayTitle}
@@ -649,10 +706,13 @@ Please respond to this booking request at your earliest convenience.`;
                     loading={loading}
                     purchaseRequests={purchaseRequests}
                     allImages={allImages}
-                    downloadPremiumImage={downloadPremiumImage}
+                    downloadPremiumImage={handleDownloadApproved}
                     getDisplayTitle={getDisplayTitle}
                     getStatusIcon={getStatusIcon}
                     getStatusColor={getStatusColor}
+                    onMessageAdmin={handleMessageAdmin}
+                    adminContact={adminContact}
+                    user={user}
                   />
                 )}
 
@@ -1046,7 +1106,7 @@ const EnhancedImageCard = ({
             className="bg-gradient-to-r from-emerald-500 to-green-500 text-white py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
             <Crown className="w-3 h-3 sm:w-4 sm:h-4" />
-            Premium
+            Download Premium
           </motion.button>
         ) : (
           <motion.button
@@ -1056,7 +1116,7 @@ const EnhancedImageCard = ({
             className="bg-gradient-to-r from-amber-500 to-orange-500 text-white py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
           >
             <Lock className="w-3 h-3 sm:w-4 sm:h-4" />
-            Request
+            Request Premium
           </motion.button>
         )}
       </div>
@@ -1064,10 +1124,10 @@ const EnhancedImageCard = ({
   </motion.div>
 )
 
-// Purchases Content Component - Mobile Optimized
+// Enhanced Purchases Content Component - Mobile Optimized
 const PurchasesContent = ({
   loading, purchaseRequests, allImages, downloadPremiumImage,
-  getDisplayTitle, getStatusIcon, getStatusColor
+  getDisplayTitle, getStatusIcon, getStatusColor, onMessageAdmin, adminContact, user
 }) => (
   <motion.div
     key="purchases"
@@ -1108,52 +1168,125 @@ const PurchasesContent = ({
       </div>
     ) : (
       <div className="space-y-4">
-        {purchaseRequests.map((request, index) => (
-          <motion.div
-            key={request.id}
-            initial={{ opacity: 0, y: 10 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.3, delay: index * 0.1 }}
-            className="bg-white rounded-2xl p-4 flex flex-col justify-between items-start shadow-md hover:shadow-lg transition-all gap-4 border border-gray-200"
-          >
-            <div className="flex-1 w-full">
-              <p className="font-bold text-base sm:text-lg text-gray-900 mb-1 line-clamp-1">
-                {getDisplayTitle(request.image) || 'Premium Image'}
-              </p>
-              <p className="text-gray-600 text-xs sm:text-sm">
-                Requested {request.created_at ? new Date(request.created_at).toLocaleDateString('en-US', { 
-                  month: 'short', day: 'numeric', year: 'numeric'
-                }) : 'Unknown date'}
-              </p>
-            </div>
-            <div className="flex items-center justify-between w-full gap-3">
-              <div className="flex items-center gap-2">
-                {getStatusIcon(request.status ?? 'pending')}
-                <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(request.status ?? 'pending')}`}>
-                  {(request.status ?? 'pending').charAt(0).toUpperCase() + (request.status ?? 'pending').slice(1)}
-                </span>
-              </div>
-              {request.status === 'approved' && (
-                <div className="flex items-center gap-2">
+        {purchaseRequests.map((request, index) => {
+          const image = allImages.find(img => img.id === request.image_id)
+          
+          return (
+            <motion.div
+              key={request.id}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: index * 0.1 }}
+              className="bg-white rounded-2xl p-4 shadow-md hover:shadow-lg transition-all border border-gray-200"
+            >
+              <div className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
+                <div className="flex-1">
+                  <div className="flex items-start gap-3">
+                    {image?.image_url && (
+                      <div className="flex-shrink-0 w-12 h-12 sm:w-16 sm:h-16 rounded-lg overflow-hidden">
+                        <img
+                          src={image.image_url}
+                          alt={getDisplayTitle(image)}
+                          className="w-full h-full object-cover"
+                        />
+                      </div>
+                    )}
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-base sm:text-lg text-gray-900 mb-1 line-clamp-1">
+                        {getDisplayTitle(request.image) || 'Premium Image'}
+                      </p>
+                      <p className="text-gray-600 text-xs sm:text-sm mb-2">
+                        Requested {request.created_at ? new Date(request.created_at).toLocaleDateString('en-US', { 
+                          month: 'short', day: 'numeric', year: 'numeric'
+                        }) : 'Unknown date'}
+                      </p>
+                      <div className="flex items-center gap-2">
+                        {getStatusIcon(request.status ?? 'pending')}
+                        <span className={`px-2 py-1 rounded-full text-xs font-semibold ${getStatusColor(request.status ?? 'pending')}`}>
+                          {(request.status ?? 'pending').charAt(0).toUpperCase() + (request.status ?? 'pending').slice(1)}
+                        </span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+                
+                <div className="flex flex-col sm:flex-row gap-2">
+                  {request.status === 'approved' && image && (
+                    <motion.button
+                      whileHover={{ scale: 1.02 }}
+                      whileTap={{ scale: 0.98 }}
+                      onClick={() => downloadPremiumImage(image)}
+                      className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-4 py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
+                    >
+                      <Download className="w-3 h-3 sm:w-4 sm:h-4" />
+                      Download Premium
+                    </motion.button>
+                  )}
+                  
                   <motion.button
                     whileHover={{ scale: 1.02 }}
                     whileTap={{ scale: 0.98 }}
-                    onClick={() => {
-                      const image = allImages.find(img => img.id === request.image_id);
-                      if (image) downloadPremiumImage(image);
-                    }}
-                    className="bg-gradient-to-r from-emerald-500 to-green-500 text-white px-3 py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center gap-2 text-xs"
+                    onClick={() => onMessageAdmin(
+                      `Regarding Request: ${getDisplayTitle(request.image)}`,
+                      `Hello PLENATHEGRAPHER Admin,\n\nI have a question about my purchase request:\n\n- Image: ${getDisplayTitle(request.image)}\n- Request ID: ${request.id}\n- Status: ${request.status}\n- User: ${user?.email}\n- Name: ${user?.user_metadata?.name || 'Not specified'}\n\nCould you please provide an update? Thank you!`
+                    )}
+                    className="bg-gradient-to-r from-blue-500 to-cyan-500 text-white px-4 py-2 rounded-lg hover:shadow-md transition-all font-semibold flex items-center justify-center gap-2 text-xs sm:text-sm"
                   >
-                    <Crown className="w-3 h-3" />
-                    Download
+                    <MessageSquare className="w-3 h-3 sm:w-4 sm:h-4" />
+                    Message Admin
                   </motion.button>
                 </div>
+              </div>
+              
+              {/* Additional info for pending/denied requests */}
+              {request.status !== 'approved' && (
+                <div className="mt-3 p-3 bg-gray-50 rounded-lg border border-gray-200">
+                  <p className="text-xs text-gray-600">
+                    {request.status === 'pending' 
+                      ? '⏳ Your request is under review. You will be able to download once approved.'
+                      : '❌ Request denied. Please message admin for more information.'
+                    }
+                  </p>
+                </div>
               )}
-            </div>
-          </motion.div>
-        ))}
+            </motion.div>
+          )
+        })}
       </div>
     )}
+    
+    {/* Admin Contact Section */}
+    <div className="mt-8 p-4 bg-gradient-to-r from-purple-50 to-blue-50 rounded-2xl border border-purple-200">
+      <div className="flex items-center gap-3 mb-3">
+        <div className="p-2 bg-purple-100 rounded-xl">
+          <MessageSquare className="w-5 h-5 text-purple-600" />
+        </div>
+        <div>
+          <h3 className="font-bold text-gray-900">Need Help?</h3>
+          <p className="text-gray-600 text-sm">Contact admin for any issues</p>
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => onMessageAdmin()}
+          className="bg-white text-purple-700 px-4 py-2 rounded-lg border border-purple-200 hover:bg-purple-50 transition-all font-semibold flex items-center gap-2 text-sm"
+        >
+          <MessageSquare className="w-4 h-4" />
+          WhatsApp Admin
+        </motion.button>
+        <motion.button
+          whileHover={{ scale: 1.02 }}
+          whileTap={{ scale: 0.98 }}
+          onClick={() => window.location.href = `mailto:${adminContact.email}?subject=Purchase Assistance&body=Hello PLENATHEGRAPHER Admin,%0D%0A%0D%0AI need assistance with my purchase.%0D%0A%0D%0AUser: ${user?.email}%0D%0AName: ${user?.user_metadata?.name || 'Not specified'}%0D%0A%0D%0AThank you!`}
+          className="bg-white text-blue-700 px-4 py-2 rounded-lg border border-blue-200 hover:bg-blue-50 transition-all font-semibold flex items-center gap-2 text-sm"
+        >
+          <Mail className="w-4 h-4" />
+          Email Admin
+        </motion.button>
+      </div>
+    </div>
   </motion.div>
 )
 
