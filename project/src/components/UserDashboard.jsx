@@ -188,11 +188,11 @@ const UserDashboard = () => {
     }
   }
 
-  // DOWNLOAD FUNCTIONS
+  // DOWNLOAD FUNCTIONS - UPDATED: No PIN for watermark downloads
   const handleDownloadWithWatermark = (image) => {
     setSelectedImage(image);
-    setDownloadType('watermark');
-    setShowPinModal(true);
+    downloadImageWithWatermark(image);
+    toast.success('Download with watermark started!');
   };
 
   const handleDownloadPremium = (image) => {
@@ -212,10 +212,7 @@ const UserDashboard = () => {
     
     try {
       if (pin === storedDownloadPin) {
-        if (downloadType === 'watermark') {
-          downloadImageWithWatermark(selectedImage);
-          toast.success('Download with watermark started!');
-        } else if (downloadType === 'premium') {
+        if (downloadType === 'premium') {
           handlePurchaseRequest(selectedImage.id);
           toast.success('Premium download request sent for approval!');
         } else if (downloadType === 'collection') {
@@ -335,7 +332,7 @@ Please respond to this booking request at your earliest convenience.`;
     });
   };
 
-  // DOWNLOAD UTILITIES
+  // UPDATED: Enhanced watermark function with more visible and moderate watermark
   const downloadImageWithWatermark = (image) => {
     const img = new Image();
     img.crossOrigin = 'anonymous';
@@ -346,33 +343,86 @@ Please respond to this booking request at your earliest convenience.`;
       const ctx = canvas.getContext('2d');
       canvas.width = img.width;
       canvas.height = img.height;
+      
+      // Draw the original image
       ctx.drawImage(img, 0, 0);
       
-      ctx.font = 'bold 30px Arial';
-      ctx.fillStyle = 'rgba(255, 255, 255, 0.6)';
+      // Enhanced watermark styling - more visible but moderate
+      const fontSize = Math.max(canvas.width * 0.03, 24); // Responsive font size
+      const lineHeight = fontSize * 1.2;
+      
+      // Set font properties
+      ctx.font = `bold ${fontSize}px Arial, sans-serif`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.7)'; // More visible white
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.5)'; // Dark outline for contrast
       ctx.textAlign = 'center';
       ctx.textBaseline = 'middle';
-      ctx.fillText('©PLENATHEGRAPHER', canvas.width / 2, canvas.height / 2);
+      ctx.lineWidth = 2;
       
-      ctx.font = 'bold 20px Arial';
-      ctx.fillText('PLENATHEGRAPHER © secured by buildfiy ', canvas.width - 220, canvas.height - 25);
-
-      const dataURL = canvas.toDataURL('image/jpeg');
+      // Main watermark text in center
+      const mainText = '© PLENATHEGRAPHER';
+      const centerX = canvas.width / 2;
+      const centerY = canvas.height / 2;
+      
+      // Draw text with outline for better visibility
+      ctx.strokeText(mainText, centerX, centerY);
+      ctx.fillText(mainText, centerX, centerY);
+      
+      // Secondary watermark in corner - smaller but still visible
+      const cornerFontSize = Math.max(canvas.width * 0.015, 14);
+      ctx.font = `bold ${cornerFontSize}px Arial, sans-serif`;
+      ctx.lineWidth = 1;
+      
+      const cornerText = 'PLENATHEGRAPHER.COM';
+      const cornerX = canvas.width - 150;
+      const cornerY = canvas.height - 30;
+      
+      ctx.strokeText(cornerText, cornerX, cornerY);
+      ctx.fillText(cornerText, cornerX, cornerY);
+      
+      // Additional diagonal watermarks for extra protection
+      ctx.save();
+      ctx.translate(canvas.width / 2, canvas.height / 2);
+      ctx.rotate(-Math.PI / 6); // 30 degree angle
+      
+      const diagonalText = 'PLENATHEGRAPHER';
+      const diagonalFontSize = Math.max(canvas.width * 0.02, 18);
+      ctx.font = `bold ${diagonalFontSize}px Arial, sans-serif`;
+      ctx.fillStyle = 'rgba(255, 255, 255, 0.3)';
+      ctx.strokeStyle = 'rgba(0, 0, 0, 0.3)';
+      ctx.lineWidth = 1;
+      
+      // Create repeating diagonal pattern
+      for (let i = -2; i <= 2; i++) {
+        for (let j = -2; j <= 2; j++) {
+          const x = i * (canvas.width / 2);
+          const y = j * (canvas.height / 3);
+          ctx.strokeText(diagonalText, x, y);
+          ctx.fillText(diagonalText, x, y);
+        }
+      }
+      
+      ctx.restore();
+      
+      // Convert to data URL and download
+      const dataURL = canvas.toDataURL('image/jpeg', 0.9);
       const link = document.createElement('a');
       link.href = dataURL;
-      link.download = `plenathegrapher-${getImageTitle(image)}.jpg`;
+      link.download = `plenathegrapher-watermark-${getImageTitle(image)}.jpg`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
     };
     
     img.onerror = function() {
+      // Fallback: download original image if canvas processing fails
       const link = document.createElement('a');
       link.href = image.image_url;
       link.download = `plenathegrapher-${getImageTitle(image)}`;
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
+      toast.info('Downloaded original image (watermark failed)');
     };
   };
 
@@ -734,7 +784,7 @@ Please respond to this booking request at your earliest convenience.`;
         </div>
       </div>
 
-      {/* PIN Modal */}
+      {/* PIN Modal - Only for premium and collection downloads now */}
       <AnimatePresence>
         {showPinModal && selectedImage && (
           <PinModal
@@ -745,7 +795,7 @@ Please respond to this booking request at your earliest convenience.`;
             }}
             onSubmit={handlePinSubmit}
             title="Enter Download PIN"
-            description={`Please enter the PIN provided by admin to ${downloadType === 'watermark' ? 'download with watermark' : downloadType === 'premium' ? 'request premium download' : 'download the entire collection'}`}
+            description={`Please enter the PIN provided by admin to ${downloadType === 'premium' ? 'request premium download' : 'download the entire collection'}`}
           />
         )}
       </AnimatePresence>
