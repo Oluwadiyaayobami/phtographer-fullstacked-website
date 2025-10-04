@@ -1,6 +1,6 @@
 import React, { useState, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Download, ShoppingCart, Share2, X, Eye, ArrowRight, Images } from 'lucide-react'
+import { Download, ShoppingCart, Share2, X, Eye, ArrowRight, Images, Maximize2 } from 'lucide-react'
 import toast from 'react-hot-toast'
 import {
   getCollections,
@@ -25,10 +25,27 @@ const Gallery = () => {
   const [showPurchaseModal, setShowPurchaseModal] = useState(false)
   const [downloadPin, setDownloadPin] = useState('')
   const [showCollections, setShowCollections] = useState(false)
+  const [showFullImage, setShowFullImage] = useState(false)
   const { user } = useAuth()
   const navigate = useNavigate()
 
   const COMPANY_NAME = "PLENATHEGRAPHER ©"
+
+  // Disable right-click context menu
+  useEffect(() => {
+    const disableRightClick = (e) => {
+      e.preventDefault()
+      return false
+    }
+
+    // Add event listener to disable right-click
+    document.addEventListener('contextmenu', disableRightClick)
+
+    // Cleanup
+    return () => {
+      document.removeEventListener('contextmenu', disableRightClick)
+    }
+  }, [])
 
   useEffect(() => {
     fetchCollections()
@@ -90,7 +107,14 @@ const Gallery = () => {
     fetchCollectionImages(collection.id)
   }
 
-  const handleImageAction = (image, action) => {
+  const handleImageClick = (image) => {
+    setSelectedImage(image)
+    setShowFullImage(true)
+  }
+
+  const handleImageAction = (image, action, e) => {
+    if (e) e.stopPropagation()
+    
     setSelectedImage(image)
 
     if (action === 'download') {
@@ -127,6 +151,8 @@ const Gallery = () => {
         link.click()
 
         setShowPinModal(false)
+        setSelectedImage(null)
+        setShowFullImage(false)
         toast.success('Download started! Link expires in 60 seconds.')
       } else {
         toast.error('Invalid PIN. Please try again.')
@@ -148,6 +174,12 @@ const Gallery = () => {
       navigator.clipboard.writeText(window.location.href)
       toast.success('Link copied to clipboard!')
     }
+  }
+
+  // Prevent image drag and drop
+  const preventImageDrag = (e) => {
+    e.preventDefault()
+    return false
   }
 
   if (loading) {
@@ -286,25 +318,23 @@ const Gallery = () => {
                 initial={{ opacity: 0, scale: 0.9 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ duration: 0.5, delay: index * 0.1 }}
-                className="group relative bg-gray-900 rounded-lg overflow-hidden shadow-lg"
+                className="group relative bg-gray-900 rounded-lg overflow-hidden shadow-lg cursor-pointer"
+                onClick={() => handleImageClick(image)}
               >
                 <img
                   src={image.image_url}
                   alt={COMPANY_NAME}
-                  className="w-full h-64 object-cover cursor-pointer"
-                  onClick={() => setSelectedImage(image)}
+                  className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
                   onContextMenu={(e) => e.preventDefault()}
                   draggable={false}
+                  onDragStart={preventImageDrag}
                 />
 
                 {/* Overlay with Actions */}
                 <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                   <div className="flex space-x-4">
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleImageAction(image, 'download')
-                      }}
+                      onClick={(e) => handleImageAction(image, 'download', e)}
                       className="p-3 bg-gray-600 rounded-full"
                       title="Download Disabled"
                     >
@@ -312,10 +342,7 @@ const Gallery = () => {
                     </button>
 
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleImageAction(image, 'buy')
-                      }}
+                      onClick={(e) => handleImageAction(image, 'buy', e)}
                       className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
                       title="Purchase"
                     >
@@ -323,14 +350,22 @@ const Gallery = () => {
                     </button>
 
                     <button
-                      onClick={(e) => {
-                        e.stopPropagation()
-                        handleImageAction(image, 'share')
-                      }}
+                      onClick={(e) => handleImageAction(image, 'share', e)}
                       className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
                       title="Share"
                     >
                       <Share2 className="w-5 h-5 text-white" />
+                    </button>
+
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation()
+                        handleImageClick(image)
+                      }}
+                      className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                      title="View Full Size"
+                    >
+                      <Maximize2 className="w-5 h-5 text-white" />
                     </button>
                   </div>
                 </div>
@@ -373,25 +408,23 @@ const Gallery = () => {
                   initial={{ opacity: 0, scale: 0.9 }}
                   animate={{ opacity: 1, scale: 1 }}
                   transition={{ duration: 0.5, delay: index * 0.1 }}
-                  className="group relative bg-gray-900 rounded-lg overflow-hidden shadow-lg"
+                  className="group relative bg-gray-900 rounded-lg overflow-hidden shadow-lg cursor-pointer"
+                  onClick={() => handleImageClick(image)}
                 >
                   <img
                     src={image.image_url}
                     alt={COMPANY_NAME}
-                    className="w-full h-64 object-cover cursor-pointer"
-                    onClick={() => setSelectedImage(image)}
+                    className="w-full h-64 object-cover transition-transform duration-300 group-hover:scale-105"
                     onContextMenu={(e) => e.preventDefault()}
                     draggable={false}
+                    onDragStart={preventImageDrag}
                   />
 
                   {/* Overlay with Actions */}
                   <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-all duration-300 flex items-center justify-center">
                     <div className="flex space-x-4">
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleImageAction(image, 'download')
-                        }}
+                        onClick={(e) => handleImageAction(image, 'download', e)}
                         className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
                         title="Download"
                       >
@@ -399,10 +432,7 @@ const Gallery = () => {
                       </button>
 
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleImageAction(image, 'buy')
-                        }}
+                        onClick={(e) => handleImageAction(image, 'buy', e)}
                         className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
                         title="Purchase"
                       >
@@ -410,14 +440,22 @@ const Gallery = () => {
                       </button>
 
                       <button
-                        onClick={(e) => {
-                          e.stopPropagation()
-                          handleImageAction(image, 'share')
-                        }}
+                        onClick={(e) => handleImageAction(image, 'share', e)}
                         className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
                         title="Share"
                       >
                         <Share2 className="w-5 h-5 text-white" />
+                      </button>
+
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation()
+                          handleImageClick(image)
+                        }}
+                        className="p-3 bg-white/20 rounded-full hover:bg-white/30 transition-colors"
+                        title="View Full Size"
+                      >
+                        <Maximize2 className="w-5 h-5 text-white" />
                       </button>
                     </div>
                   </div>
@@ -433,9 +471,105 @@ const Gallery = () => {
         )}
       </div>
 
-      {/* Modals */}
+      {/* Full Image View Modal */}
       <AnimatePresence>
-        {selectedImage && (
+        {showFullImage && selectedImage && (
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/95 z-50 flex items-center justify-center p-4"
+            onClick={() => {
+              setShowFullImage(false)
+              setSelectedImage(null)
+            }}
+          >
+            {/* Close Button */}
+            <button
+              className="absolute top-4 right-4 z-10 text-white hover:text-gray-300 transition-colors p-2 bg-black/50 rounded-full"
+              onClick={() => {
+                setShowFullImage(false)
+                setSelectedImage(null)
+              }}
+            >
+              <X size={32} />
+            </button>
+
+            {/* Image Container */}
+            <motion.div
+              initial={{ scale: 0.8, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.8, opacity: 0 }}
+              transition={{ type: "spring", damping: 25 }}
+              className="relative max-w-7xl max-h-[90vh] w-full h-full flex items-center justify-center"
+              onClick={(e) => e.stopPropagation()}
+            >
+              <img
+                src={selectedImage.image_url}
+                alt={COMPANY_NAME}
+                className="max-w-full max-h-full object-contain rounded-lg"
+                onContextMenu={(e) => e.preventDefault()}
+                draggable={false}
+                onDragStart={preventImageDrag}
+              />
+
+              {/* Action Buttons Overlay */}
+              <div className="absolute bottom-6 left-1/2 transform -translate-x-1/2 flex space-x-4 bg-black/70 backdrop-blur-sm rounded-xl p-4">
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleImageAction(selectedImage, 'download', e)
+                  }}
+                  className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                  title="Download"
+                >
+                  <Download className="w-5 h-5" />
+                  <span>Download</span>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleImageAction(selectedImage, 'buy', e)
+                  }}
+                  className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                  title="Purchase"
+                >
+                  <ShoppingCart className="w-5 h-5" />
+                  <span>Purchase</span>
+                </motion.button>
+
+                <motion.button
+                  whileHover={{ scale: 1.05 }}
+                  whileTap={{ scale: 0.95 }}
+                  onClick={(e) => {
+                    e.stopPropagation()
+                    handleImageAction(selectedImage, 'share', e)
+                  }}
+                  className="flex items-center space-x-2 bg-white/20 hover:bg-white/30 text-white px-4 py-2 rounded-lg transition-colors"
+                  title="Share"
+                >
+                  <Share2 className="w-5 h-5" />
+                  <span>Share</span>
+                </motion.button>
+              </div>
+
+              {/* Company Name Overlay */}
+              <div className="absolute top-4 left-4 bg-black/70 backdrop-blur-sm rounded-lg px-4 py-2">
+                <h4 className="text-white font-semibold text-lg">{COMPANY_NAME}</h4>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Existing Modals */}
+      <AnimatePresence>
+        {selectedImage && !showFullImage && (
           <ImageModal image={selectedImage} onClose={() => setSelectedImage(null)} />
         )}
 
