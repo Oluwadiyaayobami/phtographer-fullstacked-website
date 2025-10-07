@@ -47,7 +47,7 @@ const UserDashboard = () => {
   // Admin contact information
   const [adminContact, setAdminContact] = useState({
     whatsapp: '+2347060553627',
-    email: 'admin@plenathegrapher.com'
+    email: 'plenastudios@gmail.com'
   })
   
   // Hire Photographer Form State

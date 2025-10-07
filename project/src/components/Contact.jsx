@@ -181,7 +181,7 @@ const Contact = () => {
                   </div>
                   <div className="min-w-0 flex-1">
                     <h4 className="text-base md:text-lg font-semibold text-gray-900 truncate">Email</h4>
-                    <p className="text-sm md:text-base text-gray-600 truncate">hello@plenathegrapher.com</p>
+                    <p className="text-sm md:text-base text-gray-600 truncate">plenastudios@gmail.com</p>
                   </div>
                 </motion.div>
 

@@ -51,7 +51,7 @@ const Footer = () => {
             <div className="space-y-2 text-gray-400">
               <p>Lagos State, Nigeria</p>
               <p>+234 706 055 3627</p>
-              <p>hello@plenathegrapher.com</p>
+              <p>plenastudios@gmail.com</p>
             </div>
           </div>
         </div>
