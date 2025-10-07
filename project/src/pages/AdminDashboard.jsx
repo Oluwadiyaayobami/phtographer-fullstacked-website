@@ -64,6 +64,9 @@ const AdminDashboard = () => {
   const [confirmingDelete, setConfirmingDelete] = useState(null);
   const [confirmingCollectionDelete, setConfirmingCollectionDelete] = useState(null);
 
+  // File input ref
+  const fileInputRef = React.useRef(null);
+
   // ---------- Download PIN ----------
   useEffect(() => {
     fetchDownloadPin();
@@ -275,99 +278,185 @@ const AdminDashboard = () => {
     }
   };
 
+  // ---------- File Validation ----------
+  const validateFiles = (files) => {
+    const maxSize = 10 * 1024 * 1024; // 10MB
+    const allowedTypes = [
+      'image/jpeg',
+      'image/jpg', 
+      'image/png', 
+      'image/gif', 
+      'image/webp',
+      'image/heic',
+      'image/heif'
+    ];
+    
+    const invalidFiles = [];
+    
+    Array.from(files).forEach(file => {
+      // Check file type
+      if (!allowedTypes.includes(file.type.toLowerCase())) {
+        invalidFiles.push(`${file.name}: Invalid file type (${file.type || 'unknown'})`);
+      }
+      
+      // Check file size
+      if (file.size > maxSize) {
+        invalidFiles.push(`${file.name}: File too large (${(file.size / 1024 / 1024).toFixed(1)}MB, max 10MB)`);
+      }
+      
+      // Check if file is empty
+      if (file.size === 0) {
+        invalidFiles.push(`${file.name}: File is empty`);
+      }
+    });
+    
+    return invalidFiles;
+  };
+
   // ---------- Upload Functions ----------
+  const handleFileSelect = () => {
+    // Programmatically click the hidden file input
+    if (fileInputRef.current) {
+      fileInputRef.current.click();
+    }
+  };
+
   const handleFileUpload = async (files) => {
-    if (!files || files.length === 0) return;
+    if (!files || files.length === 0) {
+      toast.error('No files selected');
+      return;
+    }
+
+    // Validate files before upload
+    const invalidFiles = validateFiles(files);
+    if (invalidFiles.length > 0) {
+      toast.error(`Some files are invalid:\n${invalidFiles.slice(0, 3).join('\n')}`);
+      if (invalidFiles.length > 3) {
+        toast.error(`... and ${invalidFiles.length - 3} more files have issues`);
+      }
+      return;
+    }
 
     if (uploadMode === 'collection' && !selectedCollection) {
       toast.error('Please select or create a collection first');
       return;
     }
 
-    const list = Array.from(files).map((f) => ({
-      name: f.name,
+    const list = Array.from(files).map((file) => ({
+      name: file.name,
       progress: 0,
       status: 'queued',
+      file: file
     }));
+
     setUploadQueue(list);
     setIsUploading(true);
 
-    for (let i = 0; i < files.length; i++) {
-      const file = files[i];
-
-      setUploadQueue((prev) =>
-        prev.map((it, idx) => (idx === i ? { ...it, status: 'uploading', progress: 5 } : it))
-      );
-
-      try {
-        let tick = 5;
-        const progressTimer = setInterval(() => {
-          tick = Math.min(tick + 7, 90);
-          setUploadQueue((prev) =>
-            prev.map((it, idx) => (idx === i ? { ...it, progress: tick } : it))
-          );
-        }, 180);
-
-        // Determine folder based on upload mode
-        const folder = uploadMode === 'random' 
-          ? `random_images/${Date.now()}`
-          : `collection_${selectedCollection}/${Date.now()}`;
-
-        const { error: uploadError } = await supabase.storage
-          .from('images')
-          .upload(`${folder}/${file.name}`, file);
-
-        clearInterval(progressTimer);
-
-        if (uploadError) {
-          setUploadQueue((prev) =>
-            prev.map((it, idx) => (idx === i ? { ...it, status: 'error', progress: 100 } : it))
-          );
-          toast.error(`Failed to upload ${file.name}`);
-          continue;
-        }
-
-        const { data: urlData } = supabase.storage
-          .from('images')
-          .getPublicUrl(`${folder}/${file.name}`);
-
-        const publicUrl = urlData?.publicUrl;
-
-        // Insert into images table with or without collection_id
-        const imageData = {
-          title: file.name,
-          image_url: publicUrl,
-          created_at: new Date(),
-        };
-
-        if (uploadMode === 'collection') {
-          imageData.collection_id = selectedCollection;
-        }
-
-        const { error: dbError } = await supabase.from('images').insert([imageData]);
-
-        if (dbError) {
-          setUploadQueue((prev) =>
-            prev.map((it, idx) => (idx === i ? { ...it, status: 'error', progress: 100 } : it))
-          );
-          toast.error(`Failed to save metadata for ${file.name}`);
-          continue;
-        }
-
-        setUploadQueue((prev) =>
-          prev.map((it, idx) => (idx === i ? { ...it, status: 'done', progress: 100 } : it))
-        );
-        toast.success(`${file.name} uploaded successfully!`);
-      } catch (err) {
-        setUploadQueue((prev) =>
-          prev.map((it, idx) => (idx === i ? { ...it, status: 'error', progress: 100 } : it))
-        );
-        toast.error(`Upload failed for ${file.name}`);
-      }
+    // Process files sequentially to avoid overwhelming the system
+    for (let i = 0; i < list.length; i++) {
+      await processSingleFile(list[i], i);
     }
 
     setIsUploading(false);
+    // Clear file input
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
     await fetchImages();
+  };
+
+  const processSingleFile = async (item, index) => {
+    const file = item.file;
+    
+    // Update status to uploading
+    setUploadQueue((prev) =>
+      prev.map((it, idx) => (idx === index ? { ...it, status: 'uploading', progress: 5 } : it))
+    );
+
+    try {
+      // Simulate progress
+      let tick = 5;
+      const progressTimer = setInterval(() => {
+        tick = Math.min(tick + 7, 90);
+        setUploadQueue((prev) =>
+          prev.map((it, idx) => (idx === index ? { ...it, progress: tick } : it))
+        );
+      }, 180);
+
+      // Create unique filename to avoid conflicts
+      const timestamp = Date.now();
+      const safeFileName = file.name.replace(/[^a-zA-Z0-9.-]/g, '_');
+      
+      // Determine folder based on upload mode
+      const folder = uploadMode === 'random' 
+        ? `random_images/${timestamp}_${safeFileName}`
+        : `collection_${selectedCollection}/${timestamp}_${safeFileName}`;
+
+      // Upload to Supabase storage
+      const { error: uploadError } = await supabase.storage
+        .from('images')
+        .upload(folder, file, {
+          cacheControl: '3600',
+          upsert: false
+        });
+
+      clearInterval(progressTimer);
+
+      if (uploadError) {
+        console.error('Upload error:', uploadError);
+        setUploadQueue((prev) =>
+          prev.map((it, idx) => (idx === index ? { ...it, status: 'error', progress: 100, error: uploadError.message } : it))
+        );
+        toast.error(`Failed to upload ${file.name}`);
+        return;
+      }
+
+      // Get public URL
+      const { data: urlData } = supabase.storage
+        .from('images')
+        .getPublicUrl(folder);
+
+      const publicUrl = urlData?.publicUrl;
+
+      if (!publicUrl) {
+        throw new Error('Could not get public URL for uploaded file');
+      }
+
+      // Insert into images table
+      const imageData = {
+        title: file.name,
+        image_url: publicUrl,
+        created_at: new Date(),
+      };
+
+      if (uploadMode === 'collection') {
+        imageData.collection_id = selectedCollection;
+      }
+
+      const { error: dbError } = await supabase.from('images').insert([imageData]);
+
+      if (dbError) {
+        console.error('Database error:', dbError);
+        setUploadQueue((prev) =>
+          prev.map((it, idx) => (idx === index ? { ...it, status: 'error', progress: 100, error: 'Database error' } : it))
+        );
+        toast.error(`Failed to save metadata for ${file.name}`);
+        return;
+      }
+
+      // Mark as done
+      setUploadQueue((prev) =>
+        prev.map((it, idx) => (idx === index ? { ...it, status: 'done', progress: 100 } : it))
+      );
+      toast.success(`${file.name} uploaded successfully!`);
+
+    } catch (err) {
+      console.error('Upload process error:', err);
+      setUploadQueue((prev) =>
+        prev.map((it, idx) => (idx === index ? { ...it, status: 'error', progress: 100, error: err.message } : it))
+      );
+      toast.error(`Upload failed for ${file.name}`);
+    }
   };
 
   // ---------- Delete Functions with Inline Confirmation ----------
@@ -884,9 +973,19 @@ const AdminDashboard = () => {
                   )}
 
                   {/* Uploader */}
-                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-900">
-                    <input type="file" multiple onChange={(e) => handleFileUpload(e.target.files)} className="hidden" id="fileInput" />
-                    <label htmlFor="fileInput" className="cursor-pointer block">
+                  <div className="border-2 border-dashed border-gray-300 dark:border-gray-600 rounded-lg p-8 text-center bg-gray-50 dark:bg-gray-900 relative">
+                    {/* Hidden file input */}
+                    <input 
+                      ref={fileInputRef}
+                      type="file" 
+                      multiple 
+                      onChange={(e) => handleFileUpload(e.target.files)} 
+                      className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" 
+                      id="fileInput"
+                      accept="image/*,image/jpeg,image/jpg,image/png,image/gif,image/webp,image/heic,image/heif"
+                    />
+                    
+                    <div className="pointer-events-none">
                       <Upload className="w-16 h-16 text-gray-400 mx-auto mb-4" />
                       <h3 className="text-lg font-semibold text-gray-900 dark:text-gray-100 mb-2">
                         {uploadMode === 'random' ? 'Upload Random Images' : 'Upload to Collection'}
@@ -897,10 +996,17 @@ const AdminDashboard = () => {
                           : 'Upload images to the selected collection'
                         }
                       </p>
-                      <button className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-md">
+                      <p className="text-sm text-gray-500 dark:text-gray-400 mb-4">
+                        Supported formats: JPEG, PNG, GIF, WebP, HEIC (max 10MB each)
+                      </p>
+                      <button 
+                        type="button"
+                        onClick={handleFileSelect}
+                        className="bg-black text-white px-6 py-3 rounded-lg hover:bg-gray-800 transition-colors shadow-md pointer-events-auto"
+                      >
                         Choose Files
                       </button>
-                    </label>
+                    </div>
                   </div>
 
                   {/* Upload queue with progress */}
@@ -921,13 +1027,27 @@ const AdminDashboard = () => {
                           </div>
                           <div className="mt-2 h-2 w-full bg-gray-200 dark:bg-gray-700 rounded">
                             <div
-                              className={`h-2 rounded ${item.status === 'error' ? 'bg-red-500' : 'bg-black dark:bg-gray-100'}`}
+                              className={`h-2 rounded transition-all duration-300 ${
+                                item.status === 'error' 
+                                  ? 'bg-red-500' 
+                                  : item.status === 'done'
+                                  ? 'bg-green-500'
+                                  : 'bg-black dark:bg-gray-100'
+                              }`}
                               style={{ width: `${item.progress}%` }}
                             />
                           </div>
+                          {item.error && (
+                            <p className="text-xs text-red-500 mt-1">{item.error}</p>
+                          )}
                         </div>
                       ))}
-                      {isUploading && <p className="text-xs text-gray-500 dark:text-gray-400">Please keep this tab open while uploading.</p>}
+                      {isUploading && (
+                        <p className="text-xs text-gray-500 dark:text-gray-400">
+                          Please keep this tab open while uploading. 
+                          {uploadQueue.length > 5 && ' Large batches may take several minutes.'}
+                        </p>
+                      )}
                     </div>
                   )}
 
